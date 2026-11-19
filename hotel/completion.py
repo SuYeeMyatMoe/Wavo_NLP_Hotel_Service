@@ -238,7 +238,11 @@ def ticket_result(db, p, ref):
         completion_estimate=for_ticket(db, t["id"])
         if assignment and not (review or resolved or snap["awaiting_confirmation"])
         else None,
-        next_step=a.get("pending_question", {}).get("question")
+        next_step=(
+            "Open this request to confirm whether the team may visit your room."
+            if a.get("pending_question", {}).get("field") == "service_agreement"
+            else a.get("pending_question", {}).get("question")
+        )
         or a.get("routing", {}).get("reason", "")
         if review
         else "",
@@ -247,7 +251,13 @@ def ticket_result(db, p, ref):
 
 
 def call_result(db, p, key):
-    c = db.one("SELECT * FROM calls WHERE id=?", (key,))
+    c = db.one(
+        "SELECT c.*,n.room AS note_room,n.outcome AS note_outcome,"
+        "tm.call_id AS timing_id,tm.connected_at,tm.ended_at,tm.end_reason "
+        "FROM calls c LEFT JOIN call_notes n ON n.id=c.id "
+        "LEFT JOIN call_timing tm ON tm.call_id=c.id WHERE c.id=?",
+        (key,),
+    )
     if (
         not c
         or c["hotel"] != p["hotel"]
@@ -256,23 +266,15 @@ def call_result(db, p, key):
         raise PermissionError("Call unavailable.")
     if p["role"] == "staff":
         store.ticket(db, p, c["ticket"])
-    n = db.one("SELECT * FROM call_notes WHERE id=?", (key,)) or {}
     from hotel.guest_activity import duration
 
-    timing = (
-        db.one(
-            "SELECT call_id AS timing_id,connected_at,ended_at,end_reason FROM call_timing WHERE call_id=?",
-            (key,),
-        )
-        or {}
-    )
     result = {
         "call_id": key,
-        "call_duration": duration(timing),
+        "call_duration": duration(c),
         "created": c["created"],
         "finalized": c["status"] not in {"Ringing", "Connecting", "Connected"},
         "ticket": c["ticket"] or None,
-        "room": n.get("room", ""),
+        "room": c.get("note_room") or "",
         "outcome": "No service request recorded",
         "problem": "",
         "assignment": None,
@@ -284,7 +286,7 @@ def call_result(db, p, key):
         return result
     if c["ticket"]:
         result.update(ticket_result(db, p, c["ticket"]))
-    elif n.get("outcome") == "Resolved by guest":
+    elif c.get("note_outcome") == "Resolved by guest":
         result["outcome"] = "Resolved during your call"
     return result
 

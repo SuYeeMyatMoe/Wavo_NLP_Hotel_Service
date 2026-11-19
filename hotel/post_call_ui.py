@@ -2,7 +2,7 @@
 
 from uuid import uuid4
 import streamlit as st
-from hotel.ui_client import request
+from hotel.ui_client import request, _cache
 
 
 def estimate_line(estimate):
@@ -39,6 +39,10 @@ def confirmation(ref, version, prefix):
 
 def dismiss_receipt():
     state = st.session_state
+    cache = _cache()
+    for key in list(cache):
+        if key[0] == "receipt":
+            del cache[key]
     if call := state.pop("completed_call", None):
         state.dismissed_call = call
     state.pop("request_receipt", None)
@@ -54,12 +58,14 @@ def request_popup(key, jump, call=True):
 
 @st.fragment(run_every="5s")
 def receipt(key, jump, call=True):
+    if st.session_state.get("completed_call" if call else "request_receipt") != key:
+        return
     with st.container(border=True, key="post_call_receipt"):
         st.caption("WAVO · REQUEST UPDATE")
         # This button remains usable even if the following read fails.
         retry_slot = st.empty()
         with retry_slot:
-            st.button(
+            refresh = st.button(
                 "Refresh status",
                 key="receipt_refresh_" + key,
                 icon=":material/refresh:",
@@ -67,14 +73,21 @@ def receipt(key, jump, call=True):
         loading = st.empty()
         if st.session_state.get("receipt_seen") != key:
             loading.caption("Checking your request…")
-        result = request("GET", f"/{'calls' if call else 'tickets'}/{key}/result")
+        path = f"/{'calls' if call else 'tickets'}/{key}/result"
+        cache = _cache()
+        cache_key = ("receipt", path)
+        # A finalized receipt is a snapshot. Keep it usable during timer/widget
+        # reruns; Refresh status explicitly requests the latest work status.
+        result = cache.get(cache_key)
+        if refresh or not result or not result["finalized"]:
+            result = request("GET", path)
+            cache[cache_key] = result
         loading.empty()
         if not result["finalized"]:
             st.info("Checking your request…")
             return
         st.session_state.receipt_seen = key
         st.session_state.acknowledged_request = result["ticket"]
-        retry_slot.empty()
         st.subheader(result["outcome"])
         if result["problem"]:
             st.write(f"Room {result['room']} · {result['problem']}")

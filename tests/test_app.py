@@ -166,8 +166,25 @@ def test_post_call_receipt_tracks_and_confirms_same_request(tmp_path, monkeypatc
     assert not guest.exception
     assert any("15 minutes" in s.value for s in guest.subheader)
     assert any("Your request is assigned" in s.value for s in guest.subheader)
-    button(guest, "Track request").click().run()
+    # Timer and widget reruns must not repeat a slow finalized-result fetch.
+    from hotel import post_call_ui
+
+    original_request = post_call_ui.request
+    reads = []
+
+    def counted(method, path, **kwargs):
+        if path.endswith("/result"):
+            reads.append(path)
+        return original_request(method, path, **kwargs)
+
+    monkeypatch.setattr(post_call_ui, "request", counted)
+    guest.run()
+    assert not reads
+    button(guest, "Refresh status").click().run()
+    assert reads == [f"/calls/{key}/result"]
+    guest.button(key="receipt_track_" + key).click().run()
     assert guest.session_state.selected_ticket == ref
+    assert not any(k[0] == "receipt" for k in guest.session_state._api_cache)
     guest.session_state.destination = "Reception"
     guest.session_state.completed_call = key
     local().post(
@@ -180,7 +197,9 @@ def test_post_call_receipt_tracks_and_confirms_same_request(tmp_path, monkeypatc
         },
     ).raise_for_status()
     guest.run()
-    assert any("Awaiting your confirmation" in s.value for s in guest.subheader)
+    assert any("Awaiting your confirmation" in s.value for s in guest.subheader), [
+        s.value for s in guest.subheader
+    ]
     assert not any("Expected completion" in s.value for s in guest.subheader)
     button(guest, "Yes, fixed").click().run()
     assert any(s.value == "Resolved" for s in guest.subheader)

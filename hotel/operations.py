@@ -1,6 +1,7 @@
 """Transactional operational decisions. No conversational text in the action log."""
 
 import json
+import os
 from datetime import datetime, timedelta
 from uuid import uuid4
 
@@ -21,6 +22,24 @@ LABELS = {
 
 def later(at, minutes):
     return (datetime.fromisoformat(at) + timedelta(minutes=minutes)).isoformat()
+
+
+def assignment_windows(hotel, department, worker, policy):
+    """Optional demo-worker grace period; shared service policies stay intact."""
+    ack, service = policy["ack_minutes"], policy["service_minutes"]
+    if (
+        hotel == "demo"
+        and department == "Maintenance"
+        and worker == os.getenv("WAVO_DEMO_MAINTENANCE_STAFF_ID", "").strip()
+    ):
+        try:
+            override = int(os.getenv("WAVO_DEMO_MAINTENANCE_ACK_MINUTES", "0"))
+        except ValueError:
+            override = 0
+        if 1 <= override <= 120:
+            ack = max(ack, override)
+            service = max(service, 2 * ack + 1)
+    return ack, service
 
 
 def audit(db, hotel, ref, agent, action, result, key, actor="Controller", at=None):
@@ -254,12 +273,26 @@ def dispatch(db, ref, *, exclude=(), at=None, review_reason=""):
             at,
         )
         return None
-    load, _, worker, r = min(candidates)
+    preferred = (
+        os.getenv("WAVO_DEMO_MAINTENANCE_STAFF_ID", "").strip()
+        if t["hotel"] == "demo" and department == "Maintenance" and not review_reason
+        else ""
+    )
+    # Opt-in demo preference only ranks already eligible workers. Capacity,
+    # shifts, skills, permissions and replacement exclusions remain enforced.
+    load, _, worker, r = min(
+        candidates, key=lambda candidate: (candidate[2] != preferred, *candidate[:3])
+    )
     attempt = db.one(
         "SELECT COALESCE(MAX(attempt),0)+1 AS n FROM task_assignments WHERE ticket=?",
         (ref,),
     )["n"]
-    reason = f"{department} · skill: {category} · on shift and available · {load}/{r['capacity']} active tasks; least workload, oldest assignment, staff ID."
+    selection = (
+        "configured demo Maintenance preference"
+        if worker == preferred
+        else "least workload, oldest assignment, staff ID"
+    )
+    reason = f"{department} · skill: {category} · on shift and available · {load}/{r['capacity']} active tasks; {selection}."
     if review_reason:
         reason = review_reason + " " + reason
     a["service_mode"] = "reception_review" if review_reason else "service"
@@ -273,6 +306,9 @@ def dispatch(db, ref, *, exclude=(), at=None, review_reason=""):
         (department, json.dumps(a), ref),
     )
     t["department"] = department
+    ack_minutes, service_minutes = assignment_windows(
+        t["hotel"], department, worker, policy
+    )
     uid = str(uuid4())
     db.run(
         "INSERT INTO task_assignments(id,ticket,staff,hotel,attempt,assigned,ack_due,service_due,reason) VALUES(?,?,?,?,?,?,?,?,?)",
@@ -283,8 +319,8 @@ def dispatch(db, ref, *, exclude=(), at=None, review_reason=""):
             t["hotel"],
             attempt,
             at,
-            later(at, policy["ack_minutes"]),
-            later(at, policy["service_minutes"]),
+            later(at, ack_minutes),
+            later(at, service_minutes),
             reason,
         ),
     )

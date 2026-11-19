@@ -7,6 +7,7 @@ def tick(at=None):
     at = at or store.now()
     with store.transaction() as db:
         from hotel.completion import monitor
+
         monitor(db, at)
         rows = db.all(
             "SELECT t.* FROM tickets t JOIN service_lifecycle l ON l.ticket=t.id WHERE l.state NOT IN ('resolved','escalated') ORDER BY t.id"
@@ -78,10 +79,15 @@ def tick(at=None):
                 )
                 continue
             policy = db.one(
-                "SELECT ack_minutes FROM service_policies WHERE hotel=? AND priority=?",
+                "SELECT ack_minutes,service_minutes FROM service_policies WHERE hotel=? AND priority=?",
                 (t["hotel"], t["urgency"]),
             )
-            if not policy or at < op.later(a["reminded"], policy["ack_minutes"]):
+            if not policy:
+                continue
+            ack_minutes, _ = op.assignment_windows(
+                t["hotel"], t["department"], a["staff"], policy
+            )
+            if at < op.later(a["reminded"], ack_minutes):
                 continue
             # One automatic replacement per service attempt, reset only by guest reopening.
             feedback = db.one(

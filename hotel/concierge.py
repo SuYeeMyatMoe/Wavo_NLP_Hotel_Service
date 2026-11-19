@@ -492,7 +492,7 @@ def finish(db, key):
         if n["outcome"] == "Service offered":
             pending["pending_question"] = {
                 "field": "service_agreement",
-                "question": "Would you like physical service?",
+                "question": "May we send the team to your room?",
             }
         dispatch(db, n, pending, "Front Desk")
         save(db, n, outcome="Follow-up required")

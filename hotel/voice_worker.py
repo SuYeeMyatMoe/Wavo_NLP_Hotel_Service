@@ -8,7 +8,6 @@ import time
 import ssl
 from functools import lru_cache
 from threading import local
-from uuid import uuid4
 import requests
 from dotenv import load_dotenv
 from livekit.agents import (
@@ -115,7 +114,9 @@ async def reception(ctx: JobContext):
         )
     )
     writes = set()
-    cache = {}
+    from hotel.voice_input import VoiceInput
+
+    inputs = VoiceInput()
     from hotel.voice_turns import VoiceTurns
 
     async def process(uid, utterance):
@@ -143,6 +144,24 @@ async def reception(ctx: JobContext):
         )
 
     turns = VoiceTurns(process, notify)
+
+    @session.on("user_input_transcribed")
+    def transcribed(event):
+        pending = inputs.observe(event.item_id, event.transcript, event.is_final)
+        if not pending:
+            return
+
+        async def forward():
+            # A short yes/no must reach the backend even if Gemini answers it
+            # without using report_turn. Only the backend can authorize a visit.
+            log.info("voice_transcript_fallback")
+            result = await turns.run(*pending)
+            if result.get("status") not in {"processing", "no_reply", "ended"}:
+                await notify(result)
+
+        task = asyncio.create_task(forward())
+        writes.add(task)
+        task.add_done_callback(writes.discard)
 
     @session.on("close")
     def closed(_):
@@ -174,7 +193,7 @@ async def reception(ctx: JobContext):
         """Process the user's actual latest words, including confirmations, in their original language."""
         # All retries for one observed user turn share an ID even if the model
         # changes punctuation in its tool argument. The next user event resets it.
-        uid = cache.setdefault("current_turn", str(uuid4()))
+        uid = inputs.tool_key()
         result = await turns.run(uid, utterance)
         if result.get("status") in {"no_reply", "ended"}:
             raise StopResponse()
@@ -183,8 +202,6 @@ async def reception(ctx: JobContext):
     @session.on("conversation_item_added")
     def spoken(event):
         item = event.item
-        if getattr(item, "role", None) == "user":
-            cache.clear()
         if staff or getattr(item, "role", None) != "assistant" or not item.text_content:
             return
 
@@ -222,15 +239,12 @@ async def reception(ctx: JobContext):
         await turns.close()
         if writes:
             await asyncio.gather(*writes, return_exceptions=True)
-        try:
-            await asyncio.to_thread(send, key, "tools/end", {})
-        finally:
-            cache.clear()
+        await asyncio.to_thread(send, key, "tools/end", {})
 
     role = "staff work assistant" if staff else "hotel AI receptionist"
     instructions = (
         f"You are Wavo's {role}. Start in {info['language']}. Follow language switches between English, Chinese, Hindi, Malay and Burmese. "
-        "Ask one question at a time. Call report_turn for every substantive user turn with their actual original words. "
+        "Ask one question at a time. Call report_turn for EVERY user turn with their actual original words, including short yes/no answers, confirmations and refusals. Never skip the tool for a confirmation. "
         "Hotel questions, including Wi-Fi questions, MUST go through report_turn before answering. It returns the approved hotel guidance and records the NLP analysis. Do not answer them from memory. "
         "Use the returned reply as your source of truth. Never claim assignments, notification delivery, repairs or resolution without backend confirmation. "
         "If the tool returns status processing, say its short acknowledgement now, then wait for the verified follow-up. Do not repeat the tool call while it is processing. "
@@ -238,7 +252,7 @@ async def reception(ctx: JobContext):
         + (
             "Staff reports are not guest-verified completion. "
             if staff
-            else "Ask agreement before physical service. Room moves and refunds need approval. Escalate safety concerns. "
+            else "Ask permission to send a team to the room only when the backend asks you to. After the guest agrees, report their answer through report_turn and wait for the confirmed assignment. Room moves and refunds need approval. Escalate safety concerns. "
         )
         + "Verified service context: "
         + json.dumps(info)

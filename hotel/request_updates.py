@@ -75,7 +75,7 @@ def clarify(actor, ref, key, version, text, agreement):
         if physical and not agreement:
             a["pending_question"] = {
                 "field": "service_agreement",
-                "question": "May the hotel arrange physical service?",
+                "question": "May we send the team to your room?",
             }
         a["service_agreement"] = bool(agreement)
         at = store.now()

@@ -85,6 +85,29 @@ def test_wifi_and_ac_demo(client):
     assert client.get("/desk/cases", headers=guest).status_code == 403
 
 
+def test_voice_confirmation_fallback_assigns_maintenance(client):
+    from hotel.voice_input import VoiceInput
+
+    key = start(client)
+    inputs = VoiceInput()
+    inputs.observe("issue", "The toilet is blocked.", False)
+    offered = turn(client, key, "The toilet is blocked.", inputs.tool_key())
+    assert offered["outcome"] == "Service offered"
+    assert inputs.observe("issue", "The toilet is blocked.", True) is None
+    # Gemini speaks without invoking the tool for the short confirmation.
+    uid, text = inputs.observe("approval", "Yes, send maintenance.", True)
+    assigned = turn(client, key, text, uid)
+    ref = assigned["ticket"]
+    assert assigned["outcome"] == "Task assigned"
+    # A delayed/retried tool cannot create a second task.
+    assert turn(client, key, text, inputs.tool_key())["ticket"] == ref
+    client.post(f"/calls/{key}/end", headers=guest).raise_for_status()
+    result = client.get(f"/calls/{key}/result", headers=guest).json()
+    assert result["assignment"]["department"] == "Maintenance"
+    assert result["next_step"] == ""
+    assert len(client.get("/tickets", headers=guest).json()) == 1
+
+
 @pytest.mark.parametrize(
     "confirmation", ["Yup.", "Please send maintenance.", '"Yes, send maintenance."']
 )
