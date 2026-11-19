@@ -1,0 +1,1 @@
+"""Wavo hotel operations."""

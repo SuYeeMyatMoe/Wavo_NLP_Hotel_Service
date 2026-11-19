@@ -1,0 +1,1108 @@
+{
+  "version": "tfidf-v2-551d825ebb",
+  "labels_status": "provisional rule labels",
+  "rows": 1045,
+  "train": 835,
+  "test": 210,
+  "targets": {
+    "urgency": {
+      "champion": "WeightedTermLogistic",
+      "labels": [
+        "Critical",
+        "Low",
+        "Moderate",
+        "Urgent"
+      ],
+      "champion_experiment": "original training cohort",
+      "runs": [
+        {
+          "model": "LogisticRegression",
+          "experiment": "original training cohort",
+          "selected": false,
+          "cv_macro_f1": 0.6300147214695905,
+          "parameters": {
+            "model__C": 2,
+            "tfidf__ngram_range": [
+              1,
+              1
+            ]
+          },
+          "accuracy": 0.8761904761904762,
+          "report": {
+            "Critical": {
+              "precision": 1.0,
+              "recall": 0.5,
+              "f1-score": 0.6666666666666666,
+              "support": 2.0
+            },
+            "Low": {
+              "precision": 0.9157894736842105,
+              "recall": 0.90625,
+              "f1-score": 0.9109947643979057,
+              "support": 96.0
+            },
+            "Moderate": {
+              "precision": 0.8375,
+              "recall": 0.8589743589743589,
+              "f1-score": 0.8481012658227848,
+              "support": 78.0
+            },
+            "Urgent": {
+              "precision": 0.8529411764705882,
+              "recall": 0.8529411764705882,
+              "f1-score": 0.8529411764705882,
+              "support": 34.0
+            },
+            "accuracy": 0.8761904761904762,
+            "macro avg": {
+              "precision": 0.9015576625386997,
+              "recall": 0.7795413838612368,
+              "f1-score": 0.8196759683394864,
+              "support": 210.0
+            },
+            "weighted avg": {
+              "precision": 0.8773370927318297,
+              "recall": 0.8761904761904762,
+              "f1-score": 0.8759082354748071,
+              "support": 210.0
+            }
+          },
+          "tuning": [
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.6195216850757186
+            },
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.6198893145678886
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.6300147214695905
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.6274117672128857
+            }
+          ]
+        },
+        {
+          "model": "LinearSVC",
+          "experiment": "original training cohort",
+          "selected": false,
+          "cv_macro_f1": 0.6381550201496436,
+          "parameters": {
+            "model__C": 2,
+            "tfidf__ngram_range": [
+              1,
+              2
+            ]
+          },
+          "accuracy": 0.8904761904761904,
+          "report": {
+            "Critical": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1-score": 0.0,
+              "support": 2.0
+            },
+            "Low": {
+              "precision": 0.9183673469387755,
+              "recall": 0.9375,
+              "f1-score": 0.9278350515463918,
+              "support": 96.0
+            },
+            "Moderate": {
+              "precision": 0.8372093023255814,
+              "recall": 0.9230769230769231,
+              "f1-score": 0.8780487804878049,
+              "support": 78.0
+            },
+            "Urgent": {
+              "precision": 0.9615384615384616,
+              "recall": 0.7352941176470589,
+              "f1-score": 0.8333333333333334,
+              "support": 34.0
+            },
+            "accuracy": 0.8904761904761904,
+            "macro avg": {
+              "precision": 0.6792787777007047,
+              "recall": 0.6489677601809956,
+              "f1-score": 0.6598042913418826,
+              "support": 210.0
+            },
+            "weighted avg": {
+              "precision": 0.8864661837134546,
+              "recall": 0.8904761904761904,
+              "f1-score": 0.8852062055230272,
+              "support": 210.0
+            }
+          },
+          "tuning": [
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.6349153782985176
+            },
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.6271807600900489
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.629572735767917
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.6381550201496436
+            }
+          ]
+        },
+        {
+          "model": "WeightedTermLogistic",
+          "experiment": "original training cohort",
+          "selected": true,
+          "cv_macro_f1": 0.785261495086179,
+          "parameters": {
+            "model__C": 2,
+            "model__critical_bias": 2.0,
+            "tfidf__min_df": 2,
+            "tfidf__ngram_range": [
+              1,
+              1
+            ]
+          },
+          "accuracy": 0.9285714285714286,
+          "report": {
+            "Critical": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1-score": 1.0,
+              "support": 2.0
+            },
+            "Low": {
+              "precision": 0.9583333333333334,
+              "recall": 0.9583333333333334,
+              "f1-score": 0.9583333333333334,
+              "support": 96.0
+            },
+            "Moderate": {
+              "precision": 0.9102564102564102,
+              "recall": 0.9102564102564102,
+              "f1-score": 0.9102564102564102,
+              "support": 78.0
+            },
+            "Urgent": {
+              "precision": 0.8823529411764706,
+              "recall": 0.8823529411764706,
+              "f1-score": 0.8823529411764706,
+              "support": 34.0
+            },
+            "accuracy": 0.9285714285714286,
+            "macro avg": {
+              "precision": 0.9377356711915535,
+              "recall": 0.9377356711915535,
+              "f1-score": 0.9377356711915535,
+              "support": 210.0
+            },
+            "weighted avg": {
+              "precision": 0.9285714285714286,
+              "recall": 0.9285714285714286,
+              "f1-score": 0.9285714285714286,
+              "support": 210.0
+            }
+          },
+          "tuning": [
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "model__critical_bias": 0.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.6972345525640632
+            },
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "model__critical_bias": 0.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.7097740662190702
+            },
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "model__critical_bias": 1.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.7531025908362826
+            },
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "model__critical_bias": 1.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.7656478030940909
+            },
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "model__critical_bias": 2.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.7515555600007655
+            },
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "model__critical_bias": 2.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.7438316053881335
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "model__critical_bias": 0.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.70132455230157
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "model__critical_bias": 0.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.7123681469298756
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "model__critical_bias": 1.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.70132455230157
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "model__critical_bias": 1.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.7123681469298756
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "model__critical_bias": 2.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.785261495086179
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "model__critical_bias": 2.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.7682393178265133
+            },
+            {
+              "parameters": {
+                "model__C": 8,
+                "model__critical_bias": 0.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.6994693656484259
+            },
+            {
+              "parameters": {
+                "model__C": 8,
+                "model__critical_bias": 0.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.7138049473191647
+            },
+            {
+              "parameters": {
+                "model__C": 8,
+                "model__critical_bias": 1.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.6994693656484259
+            },
+            {
+              "parameters": {
+                "model__C": 8,
+                "model__critical_bias": 1.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.7138049473191647
+            },
+            {
+              "parameters": {
+                "model__C": 8,
+                "model__critical_bias": 2.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.7553305768881232
+            },
+            {
+              "parameters": {
+                "model__C": 8,
+                "model__critical_bias": 2.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.769673583152822
+            }
+          ]
+        },
+        {
+          "model": "WeightedTermLogistic",
+          "experiment": "supplemental safety training",
+          "selected": false,
+          "cv_macro_f1": 0.7773438808608185,
+          "parameters": {
+            "model__C": 8,
+            "model__critical_bias": 1.0,
+            "tfidf__min_df": 2,
+            "tfidf__ngram_range": [
+              1,
+              2
+            ]
+          },
+          "accuracy": 0.9571428571428572,
+          "report": {
+            "Critical": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1-score": 1.0,
+              "support": 2.0
+            },
+            "Low": {
+              "precision": 0.9791666666666666,
+              "recall": 0.9791666666666666,
+              "f1-score": 0.9791666666666666,
+              "support": 96.0
+            },
+            "Moderate": {
+              "precision": 0.948051948051948,
+              "recall": 0.9358974358974359,
+              "f1-score": 0.9419354838709677,
+              "support": 78.0
+            },
+            "Urgent": {
+              "precision": 0.9142857142857143,
+              "recall": 0.9411764705882353,
+              "f1-score": 0.927536231884058,
+              "support": 34.0
+            },
+            "accuracy": 0.9571428571428572,
+            "macro avg": {
+              "precision": 0.9603760822510822,
+              "recall": 0.9640601432880844,
+              "f1-score": 0.9621595956054231,
+              "support": 210.0
+            },
+            "weighted avg": {
+              "precision": 0.9573036487322202,
+              "recall": 0.9571428571428572,
+              "f1-score": 0.9571771410761593,
+              "support": 210.0
+            }
+          },
+          "tuning": [
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "model__critical_bias": 0.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.7275695042666225
+            },
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "model__critical_bias": 0.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.7672704915637863
+            },
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "model__critical_bias": 1.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.7005303144237779
+            },
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "model__critical_bias": 1.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.7346807266216858
+            },
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "model__critical_bias": 2.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.646142516248955
+            },
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "model__critical_bias": 2.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.6586180503446412
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "model__critical_bias": 0.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.6933046047280703
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "model__critical_bias": 0.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.7164704591299937
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "model__critical_bias": 1.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.7420178999339564
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "model__critical_bias": 1.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.7562817230582525
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "model__critical_bias": 2.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.6769920265279499
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "model__critical_bias": 2.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.6992321897798472
+            },
+            {
+              "parameters": {
+                "model__C": 8,
+                "model__critical_bias": 0.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.6945977382275341
+            },
+            {
+              "parameters": {
+                "model__C": 8,
+                "model__critical_bias": 0.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.713831486075947
+            },
+            {
+              "parameters": {
+                "model__C": 8,
+                "model__critical_bias": 1.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.7541277964565585
+            },
+            {
+              "parameters": {
+                "model__C": 8,
+                "model__critical_bias": 1.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.7773438808608185
+            },
+            {
+              "parameters": {
+                "model__C": 8,
+                "model__critical_bias": 2.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.7048744289576288
+            },
+            {
+              "parameters": {
+                "model__C": 8,
+                "model__critical_bias": 2.0,
+                "tfidf__min_df": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.7334795070495215
+            }
+          ]
+        }
+      ],
+      "confusion": [
+        [
+          2,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          92,
+          4,
+          0
+        ],
+        [
+          0,
+          3,
+          71,
+          4
+        ],
+        [
+          0,
+          1,
+          3,
+          30
+        ]
+      ]
+    },
+    "department": {
+      "champion": "LinearSVC",
+      "labels": [
+        "Front Desk",
+        "Guest Relations",
+        "Housekeeping",
+        "Maintenance",
+        "Marketing"
+      ],
+      "champion_experiment": "original training cohort",
+      "runs": [
+        {
+          "model": "LogisticRegression",
+          "experiment": "original training cohort",
+          "selected": false,
+          "cv_macro_f1": 0.7549544507800862,
+          "parameters": {
+            "model__C": 2,
+            "tfidf__ngram_range": [
+              1,
+              1
+            ]
+          },
+          "accuracy": 0.8571428571428571,
+          "report": {
+            "Front Desk": {
+              "precision": 0.7777777777777778,
+              "recall": 0.6363636363636364,
+              "f1-score": 0.7,
+              "support": 11.0
+            },
+            "Guest Relations": {
+              "precision": 0.9344262295081968,
+              "recall": 0.8507462686567164,
+              "f1-score": 0.890625,
+              "support": 67.0
+            },
+            "Housekeeping": {
+              "precision": 0.7818181818181819,
+              "recall": 0.8958333333333334,
+              "f1-score": 0.8349514563106796,
+              "support": 48.0
+            },
+            "Maintenance": {
+              "precision": 0.7948717948717948,
+              "recall": 0.8611111111111112,
+              "f1-score": 0.8266666666666667,
+              "support": 36.0
+            },
+            "Marketing": {
+              "precision": 0.9130434782608695,
+              "recall": 0.875,
+              "f1-score": 0.8936170212765957,
+              "support": 48.0
+            },
+            "accuracy": 0.8571428571428571,
+            "macro avg": {
+              "precision": 0.8403874924473641,
+              "recall": 0.8238108698929594,
+              "f1-score": 0.8291720288507884,
+              "support": 210.0
+            },
+            "weighted avg": {
+              "precision": 0.8625278915799229,
+              "recall": 0.8571428571428571,
+              "f1-score": 0.8576341044009012,
+              "support": 210.0
+            }
+          },
+          "tuning": [
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.7476356258217448
+            },
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.7371842277903707
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.7549544507800862
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.710929146332203
+            }
+          ]
+        },
+        {
+          "model": "LinearSVC",
+          "experiment": "original training cohort",
+          "selected": true,
+          "cv_macro_f1": 0.7585540434568352,
+          "parameters": {
+            "model__C": 0.5,
+            "tfidf__ngram_range": [
+              1,
+              1
+            ]
+          },
+          "accuracy": 0.8809523809523809,
+          "report": {
+            "Front Desk": {
+              "precision": 1.0,
+              "recall": 0.6363636363636364,
+              "f1-score": 0.7777777777777778,
+              "support": 11.0
+            },
+            "Guest Relations": {
+              "precision": 0.9090909090909091,
+              "recall": 0.8955223880597015,
+              "f1-score": 0.9022556390977443,
+              "support": 67.0
+            },
+            "Housekeeping": {
+              "precision": 0.84,
+              "recall": 0.875,
+              "f1-score": 0.8571428571428571,
+              "support": 48.0
+            },
+            "Maintenance": {
+              "precision": 0.8,
+              "recall": 0.8888888888888888,
+              "f1-score": 0.8421052631578947,
+              "support": 36.0
+            },
+            "Marketing": {
+              "precision": 0.9361702127659575,
+              "recall": 0.9166666666666666,
+              "f1-score": 0.9263157894736842,
+              "support": 48.0
+            },
+            "accuracy": 0.8809523809523809,
+            "macro avg": {
+              "precision": 0.8970522243713732,
+              "recall": 0.8424883159957787,
+              "f1-score": 0.8611194653299916,
+              "support": 210.0
+            },
+            "weighted avg": {
+              "precision": 0.8855488624850327,
+              "recall": 0.8809523809523809,
+              "f1-score": 0.8806118470780124,
+              "support": 210.0
+            }
+          },
+          "tuning": [
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.7585540434568352
+            },
+            {
+              "parameters": {
+                "model__C": 0.5,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.746912034967219
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  1
+                ]
+              },
+              "macro_f1": 0.7278166007870167
+            },
+            {
+              "parameters": {
+                "model__C": 2,
+                "tfidf__ngram_range": [
+                  1,
+                  2
+                ]
+              },
+              "macro_f1": 0.7320056083403128
+            }
+          ]
+        }
+      ],
+      "confusion": [
+        [
+          7,
+          1,
+          2,
+          1,
+          0
+        ],
+        [
+          0,
+          60,
+          2,
+          2,
+          3
+        ],
+        [
+          0,
+          2,
+          42,
+          4,
+          0
+        ],
+        [
+          0,
+          1,
+          3,
+          32,
+          0
+        ],
+        [
+          0,
+          2,
+          1,
+          1,
+          44
+        ]
+      ]
+    }
+  },
+  "urgency_comparison": {
+    "Before": {
+      "model": "LinearSVC",
+      "macro_f1": 0.6598042913418826,
+      "critical_recall": 0.0,
+      "critical_precision": 0.0,
+      "critical_cases": 2,
+      "critical_detected": 0,
+      "false_critical_alerts": 0,
+      "challenge": {
+        "size": 16,
+        "critical_cases": 5,
+        "critical_detected": 0,
+        "false_critical_alerts": 0
+      }
+    },
+    "After": {
+      "model": "WeightedTermLogistic",
+      "macro_f1": 0.9377356711915535,
+      "critical_recall": 1.0,
+      "critical_precision": 1.0,
+      "critical_cases": 2,
+      "critical_detected": 2,
+      "false_critical_alerts": 0,
+      "challenge": {
+        "size": 16,
+        "critical_cases": 5,
+        "critical_detected": 3,
+        "false_critical_alerts": 0
+      }
+    }
+  },
+  "evaluation_status": "Previously inspected locked holdout; not a new unseen evaluation",
+  "urgency_extra_train": 31,
+  "urgency_extra_critical": 10,
+  "errors": [
+    {
+      "id": "A2805",
+      "text": "It's a wonderful stay for business in a new neighborhood. There was nearby construction when I stayed there, but rooms are good at soundproofing.\nRooms are spacious with nice view. Staffs are nice that they offered me fresh fruits daily and even chocolate for good sleep at night.\nMany options for food as the founder is initially in culinary industry before running this hotel: Taiwanese, Japanese, Italian,.. under your fingertips..",
+      "target": "urgency",
+      "expected": "Low",
+      "predicted": "Moderate"
+    },
+    {
+      "id": "T04124",
+      "text": "The room is very big and old, the shower equipment is very old, the carpet is very messy, the sofa is full of fleas and bites, it is not recommended to stay here, the house price is fickle and deceptive, they say there is only one room left, but the room is gone as soon as I place the order. There is one room, and it’s cheap, so cool😡",
+      "target": "urgency",
+      "expected": "Low",
+      "predicted": "Moderate"
+    },
+    {
+      "id": "A0150",
+      "text": "It was conveniently located in the city center, near the MRT station. I checked in after a late flight, but there were no issues at all, and all the staff were kind. They also happily assisted with restaurant reservations and luggage storage after check-out. The facilities were not particularly old, and there was a washlet as well. I highly recommend it if you don't mind not being right in front of Taipei Station.",
+      "target": "urgency",
+      "expected": "Low",
+      "predicted": "Moderate"
+    },
+    {
+      "id": "A0329",
+      "text": "The hotel is old but is well managed with modern era renovations.\nIt is located at a strategic point on the subway.\nVery clean place, and most importantly (No smookinge smell) in the rooms!\nBreakfast \"is a little weak\" but meets basic needs.\nParking is chaotic, you have to wait for spaces.\nBut in general, I recommend it to everyone!",
+      "target": "urgency",
+      "expected": "Low",
+      "predicted": "Moderate"
+    },
+    {
+      "id": "A6993",
+      "text": "We stayed on the 10th floor and had a beautiful city view, just as I had requested through Agoda. The hotel staff were incredibly accommodating and prepared everything as requested, which made our stay even more special.\n\nRoom:\nThe room was spacious enough for the four of us, including an infant. It felt cozy, was well-lit, and offered a lovely view. The beds were extremely comfortable, and the hallways were clean and nicely designed.\n\nCleanliness:\nEven though we left our room untidy after heading out each day, the housekeeping staff did an impressive job of tidying everything up.\n\nInternet:\nThe Wi-Fi was fast, which allowed me to work seamlessly at night.\n\nBreakfast:\nThe breakfast was delicious, though there was a long queue depending on the time we went. We loved the wide variety of food options available.\n\nStaff:\nThe staff were attentive and efficient. Whenever I requested items, they delivered them to our room in less than 10 minutes (though I assume this may vary depending on the time of day). It was my birthday during our stay, and they left a thoughtful letter and they even sent a small but delicious cake to celebrate the occasion.\n\nPerks:\nOne fun perk was that they provided us with two plastic bags, which we could fill with complimentary candies and chocolates everyday.\n\nLocation:\nThe hotel is conveniently located just a 15-minute walk from Ximending Night Market. We also used their shuttle bus service to visit Longshan Temple.\n\nOverall:\nOur trip to Taipei was fantastic, and this hotel contributed to the experience. I would definitely recommend it to others and would love to stay here again.\n",
+      "target": "urgency",
+      "expected": "Moderate",
+      "predicted": "Low"
+    }
+  ],
+  "p95_ms": 12.195376400768508
+}

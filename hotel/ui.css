@@ -1,0 +1,23 @@
+@font-face{font-family:Geist;src:url('app/static/geist.woff2') format('woff2');font-weight:100 900;font-display:swap}
+:root{--ink:#30251d;--navy:#30251d;--gold:#70502d;--muted:#766858;--line:#d8c7b1;--paper:#faf7f1;--surface:#fffdf8}
+.stApp,.stApp button,.stApp input,.stApp textarea,.stApp [data-testid="stMarkdownContainer"]{font-family:Geist,"Segoe UI",sans-serif}
+.stApp{background:var(--paper);color:var(--ink)}
+[data-testid="stHeader"]{height:0;background:transparent}
+.block-container{max-width:1370px;padding:1rem clamp(1rem,4vw,4rem) 3rem}
+h1,h2{font-family:Georgia,"Times New Roman",serif!important;font-weight:400!important;letter-spacing:-.045em;line-height:1.1!important;color:var(--ink)}
+h3{font-family:Geist,"Segoe UI",sans-serif!important;letter-spacing:-.025em}
+.brand{display:flex;align-items:center;gap:10px;height:50px;font-size:25px;font-weight:650;letter-spacing:-1.2px;color:var(--ink);text-decoration:none}
+.brand small{font-size:12px;letter-spacing:0;border-left:1px solid var(--line);padding-left:14px;margin-left:3px;font-weight:400}
+.brand:hover{color:var(--gold);text-decoration:none}.wavo-icon{height:44px;width:44px;object-fit:contain}
+.hero{padding:clamp(24px,4vw,48px);min-height:150px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(90deg,#f1e9dc 15%,#f6eee4 55%,#f3ece1cc 70%,transparent 92%),url('app/static/room-detail.jpg') right 55%/43% auto no-repeat,#f1e9dc}
+.hero h1{font-size:clamp(36px,4vw,58px);margin:0;padding:0}.hero p{color:var(--muted);font-size:15px;max-width:65%;margin:14px 0 0}.hero .orb,.hero .ribs{display:none}
+.result{padding:20px 24px;border-radius:12px;background:#f1e9dc}.result small,.datum small{display:block;font-size:13px;color:var(--muted)}.result strong{display:block;font-size:25px;font-weight:600}.datum{padding:12px 0}.datum b{font-size:25px}
+.token{display:inline-block;padding:4px 9px;margin:3px 4px 3px 0;background:#eee4d5;border-radius:5px;font:13px ui-monospace,monospace;color:#594025}
+.stApp a:focus-visible,.stApp button:focus-visible{outline:3px solid #947146;outline-offset:3px}
+.st-key-nav{padding:10px 0}.st-key-nav button,.st-key-nav [role="radio"]{min-height:44px}
+.st-key-home_progress{max-width:900px;margin:20px auto;background:var(--surface);padding:24px!important}
+.st-key-post_call_receipt{max-width:700px;margin:0 auto!important;padding:clamp(18px,3vw,28px)!important;background:linear-gradient(145deg,#fffdf8,#f6eee2);border:1px solid var(--line)!important;border-radius:18px!important}
+.st-key-post_call_receipt h3:first-of-type{font:400 clamp(25px,3vw,34px)/1.13 Georgia,serif!important;letter-spacing:-.035em}
+.st-key-post_call_receipt h3{font-size:clamp(21px,2.8vw,28px)}
+@media(max-width:760px){.block-container{padding:12px 16px 32px}.brand small{display:none}.hero{padding:24px;min-height:125px}.hero p{max-width:82%}.st-key-post_call_receipt{margin:18px 0!important}.st-key-masthead [data-testid="stHorizontalBlock"]{flex-wrap:nowrap;gap:6px;align-items:center}.st-key-masthead [data-testid="stColumn"]{flex:1 1 auto!important;min-width:0!important;width:auto!important}.st-key-masthead [data-testid="stColumn"]:last-child{flex:0 0 auto!important}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation-duration:0s!important}}

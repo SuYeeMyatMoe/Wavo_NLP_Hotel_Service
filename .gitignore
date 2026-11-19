@@ -1,0 +1,11 @@
+.venv/
+.env
+__pycache__/
+.pytest_cache/
+.runtime/
+*.log
+.streamlit/secrets.toml
+data/raw/
+.ipynb_checkpoints/
+.playwright-cli/
+

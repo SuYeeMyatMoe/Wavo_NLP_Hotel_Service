@@ -1,0 +1,109 @@
+{
+  "base": "distilbert/distilbert-base-uncased",
+  "revision": "12040accade4e8a0f71eabdb258fecc2e7e948be",
+  "train": 835,
+  "test": 210,
+  "labels": {
+    "urgency": [
+      "Critical",
+      "Low",
+      "Moderate",
+      "Urgent"
+    ],
+    "department": [
+      "Front Desk",
+      "Guest Relations",
+      "Housekeeping",
+      "Maintenance",
+      "Marketing"
+    ]
+  },
+  "epochs": 3,
+  "max_length": 80,
+  "results": {
+    "urgency": {
+      "Critical": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 2.0
+      },
+      "Low": {
+        "precision": 0.8543689320388349,
+        "recall": 0.9166666666666666,
+        "f1-score": 0.8844221105527639,
+        "support": 96.0
+      },
+      "Moderate": {
+        "precision": 0.8,
+        "recall": 0.8205128205128205,
+        "f1-score": 0.810126582278481,
+        "support": 78.0
+      },
+      "Urgent": {
+        "precision": 0.8518518518518519,
+        "recall": 0.6764705882352942,
+        "f1-score": 0.7540983606557377,
+        "support": 34.0
+      },
+      "accuracy": 0.8333333333333334,
+      "macro avg": {
+        "precision": 0.6265551959726716,
+        "recall": 0.6034125188536954,
+        "f1-score": 0.6121617633717457,
+        "support": 210.0
+      },
+      "weighted avg": {
+        "precision": 0.8256303830413863,
+        "recall": 0.8333333333333334,
+        "f1-score": 0.827303525205152,
+        "support": 210.0
+      }
+    },
+    "department": {
+      "Front Desk": {
+        "precision": 0.2222222222222222,
+        "recall": 0.18181818181818182,
+        "f1-score": 0.2,
+        "support": 11.0
+      },
+      "Guest Relations": {
+        "precision": 0.6891891891891891,
+        "recall": 0.7611940298507462,
+        "f1-score": 0.723404255319149,
+        "support": 67.0
+      },
+      "Housekeeping": {
+        "precision": 0.6875,
+        "recall": 0.6875,
+        "f1-score": 0.6875,
+        "support": 48.0
+      },
+      "Maintenance": {
+        "precision": 0.75,
+        "recall": 0.6666666666666666,
+        "f1-score": 0.7058823529411765,
+        "support": 36.0
+      },
+      "Marketing": {
+        "precision": 0.6382978723404256,
+        "recall": 0.625,
+        "f1-score": 0.631578947368421,
+        "support": 48.0
+      },
+      "accuracy": 0.6666666666666666,
+      "macro avg": {
+        "precision": 0.5974418567503674,
+        "recall": 0.5844357756671189,
+        "f1-score": 0.5896731111257493,
+        "support": 210.0
+      },
+      "weighted avg": {
+        "precision": 0.6631353237736215,
+        "recall": 0.6666666666666666,
+        "f1-score": 0.6637887585045217,
+        "support": 210.0
+      }
+    }
+  }
+}
