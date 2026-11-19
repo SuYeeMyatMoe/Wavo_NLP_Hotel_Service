@@ -85,6 +85,24 @@ def test_wifi_and_ac_demo(client):
     assert client.get("/desk/cases", headers=guest).status_code == 403
 
 
+@pytest.mark.parametrize(
+    "confirmation", ["Yup.", "Please send maintenance.", '"Yes, send maintenance."']
+)
+def test_spoken_confirmation_dispatches_before_hangup(client, confirmation):
+    key = start(client)
+    offered = turn(client, key, "The AC is not cooling.")
+    assert offered["outcome"] == "Service offered"
+    approved = turn(client, key, confirmation)
+    assert approved["outcome"] == "Task assigned"
+    task = client.get("/tickets/" + approved["ticket"]).json()
+    assert task["department"] == "Maintenance"
+    assert task["analysis"]["service_agreement"] is True
+    client.post(f"/calls/{key}/end", headers=guest).raise_for_status()
+    receipt = client.get(f"/calls/{key}/result", headers=guest).json()
+    assert receipt["finalized"]
+    assert receipt["assignment"]["department"] == "Maintenance"
+
+
 def test_no_room_and_unresolved_exit(client):
     client.put(
         "/desk/rooms", json={"room": "308", "category": "Standard", "ready": False}
@@ -95,9 +113,12 @@ def test_no_room_and_unresolved_exit(client):
     key = start(client)
     result = turn(client, key, "Our air conditioner has broken.")
     assert "28 minutes" in result["reply"] and "same-category" not in result["reply"]
-    assert client.post(
-        f"/calls/{key}/end", headers={"x-preview-user": "demo-staff"}
-    ).status_code == 403
+    assert (
+        client.post(
+            f"/calls/{key}/end", headers={"x-preview-user": "demo-staff"}
+        ).status_code
+        == 403
+    )
     client.post(f"/calls/{key}/end", headers=guest).raise_for_status()
     ended = client.get(f"/calls/{key}/case", headers=guest).json()
     client.post(f"/calls/{key}/end", headers=guest).raise_for_status()
@@ -135,6 +156,19 @@ def test_real_reception_handoff(client, text):
     )
     client.post(f"/calls/{key}/end", headers=guest).raise_for_status()
     assert client.get(f"/calls/{key}/signal").status_code == 403
+
+
+def test_pending_handoff_does_not_repeat_announcement(client):
+    key = start(client)
+    first = turn(client, key, "I want to speak with a person.")
+    assert "I have asked reception to join" in first["reply"]
+    for text in ("Okay", "Are they coming?", "My air conditioner is still broken."):
+        result = turn(client, key, text)
+        assert result["outcome"] == "Waiting for reception"
+        assert result["ticket"] == first["ticket"]
+        assert "not accepted" in result["reply"]
+        assert "I have asked reception to join" not in result["reply"]
+    assert len(client.get("/tickets").json()) == 1
 
 
 def test_same_hotel_private_notes(client):

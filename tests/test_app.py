@@ -189,6 +189,43 @@ def test_post_call_receipt_tracks_and_confirms_same_request(tmp_path, monkeypatc
     assert "completed_call" not in guest.session_state
 
 
+def test_handoff_popup_survives_unavailable_home_progress(tmp_path, monkeypatch):
+    from uuid import uuid4
+    import streamlit as st
+    from hotel import guest_history_ui
+    from hotel.ui_client import local
+
+    monkeypatch.setenv("HOTEL_MODE", "preview")
+    monkeypatch.setenv("CONCIERGE_MODE", "local")
+    monkeypatch.setenv("HOTEL_API_URL", "")
+    monkeypatch.setenv("PREVIEW_DB", str(tmp_path / "handoff-popup.sqlite"))
+    headers = {"x-preview-user": "demo-guest"}
+    key = local().post("/calls", headers=headers).json()["id"]
+    local().post(
+        f"/calls/{key}/turn",
+        headers=headers,
+        json={"text": "I want to speak with a person.", "turn_id": str(uuid4())},
+    ).raise_for_status()
+    local().post(f"/calls/{key}/end", headers=headers).raise_for_status()
+
+    def unavailable(*args):
+        st.error("Progress refresh unavailable")
+        st.stop()
+
+    monkeypatch.setattr(guest_history_ui, "home_progress", unavailable)
+    guest = AppTest.from_file("../app.py", default_timeout=90)
+    guest.session_state.preview_actor = "demo-guest"
+    guest.session_state.completed_call = key
+    guest.run()
+    assert not guest.exception
+    assert any("Reception is following up" in s.value for s in guest.subheader)
+    assert button(guest, "Track request")
+    button(guest, "Close").click().run()
+    assert not guest.exception
+    assert "completed_call" not in guest.session_state
+    assert guest.session_state.nav == "My requests"
+
+
 def test_summary_ok_keeps_work_open_and_unified_history(tmp_path, monkeypatch):
     monkeypatch.setenv("HOTEL_MODE", "preview")
     monkeypatch.setenv("CONCIERGE_MODE", "local")

@@ -16,6 +16,7 @@ from livekit.agents import (
     AgentServer,
     AgentSession,
     JobContext,
+    StopResponse,
     cli,
     function_tool,
 )
@@ -102,6 +103,9 @@ async def reception(ctx: JobContext):
         llm=google.realtime.RealtimeModel(
             model=os.environ["GEMINI_LIVE_MODEL"],
             api_version="v1alpha",
+            # Gemini honors StopResponse's silent tool result only for
+            # non-blocking tools; otherwise it speaks even on a retry.
+            tool_behavior=types.Behavior.NON_BLOCKING,
             http_options=types.HttpOptions(
                 client_args={"verify": tls_context()},
                 # HTTPX uses verify; aiohttp and the Live websocket use ssl.
@@ -172,6 +176,8 @@ async def reception(ctx: JobContext):
         # changes punctuation in its tool argument. The next user event resets it.
         uid = cache.setdefault("current_turn", str(uuid4()))
         result = await turns.run(uid, utterance)
+        if result.get("status") in {"no_reply", "ended"}:
+            raise StopResponse()
         return json.dumps(result, ensure_ascii=False)
 
     @session.on("conversation_item_added")

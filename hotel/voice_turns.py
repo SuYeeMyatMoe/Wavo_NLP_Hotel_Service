@@ -16,6 +16,11 @@ class VoiceTurns:
     async def run(self, key, text):
         if self.closed:
             return {"status": "ended"}
+        # One invocation owns both the acknowledgement and final delivery.
+        # Retried tool calls must not replay either, even after work completes.
+        if key in self.tasks:
+            logging.getLogger("wavo.voice").info("voice_duplicate_turn_suppressed")
+            return {"status": "no_reply"}
         if key not in self.tasks:
 
             async def ordered():

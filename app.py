@@ -93,17 +93,21 @@ def sign_in():
                 if r.ok:
                     session = r.json()
                     profile = requests.get(
-                        os.environ["HOTEL_API_URL"].rstrip("/") + "/me",
+                        os.environ["HOTEL_API_URL"].rstrip("/") + "/workspace/updates",
                         headers={"Authorization": "Bearer " + session["access_token"]},
                         timeout=15,
                     )
                     if profile.ok:
-                        role = profile.json()["role"]
+                        updates = profile.json()
+                        role = updates["profile"]["role"]
                         if (role == "guest") == (entrance == "guest"):
                             S.auth = session
                             from hotel.ui_client import remember
 
-                            remember("/me", profile.json())
+                            # This authenticated response already contains /me
+                            # and the inbox needed by the first workspace render.
+                            remember("/me", updates["profile"])
+                            remember("/workspace/updates", updates)
                             st.query_params.clear()
                             st.rerun()
                         st.error(
@@ -1049,52 +1053,59 @@ browser_voice = bool(
     and mode == "connected"
     and os.getenv("CONCIERGE_MODE", "auto") != "local"
 )
-with account:
+@st.fragment
+def account_controls():
     account_menu = st.popover(
         "Guest workspace" if guest else "Staff workspace",
         icon=":material/account_circle:",
         on_change="rerun",
+        key="account_menu",
     )
-with account_menu:
-    st.caption(me["mode"])
-    st.write(me["id"])
-    details = request("GET", "/profile/details") if account_menu.open else {}
-    if details.get("reservation"):
-        st.caption("Verified room " + details["reservation"]["room"])
-    if details.get("roster"):
-        st.caption(
-            details["roster"]["department"]
-            + " · "
-            + ("Available" if details["roster"]["available"] else "Unavailable")
-        )
-    if me["role"] == "manager" and st.button("Hotel settings"):
-        S.settings_open = True
-        st.rerun()
-    if me["mode"] == "Local preview":
-        if st.button("Switch to staff" if guest else "Switch to guest"):
+    with account_menu:
+        st.caption(me["mode"])
+        st.write(me["id"])
+        details = request("GET", "/profile/details") if account_menu.open else {}
+        if details.get("reservation"):
+            st.caption("Verified room " + details["reservation"]["room"])
+        if details.get("roster"):
+            st.caption(
+                details["roster"]["department"]
+                + " · "
+                + ("Available" if details["roster"]["available"] else "Unavailable")
+            )
+        if me["role"] == "manager" and st.button("Hotel settings"):
+            S.settings_open = True
+            st.rerun()
+        if me["mode"] == "Local preview":
+            if st.button("Switch to staff" if guest else "Switch to guest"):
+                if guest and S.get("active_call"):
+                    request("POST", f"/calls/{S.active_call}/end")
+                S.clear()
+                st.query_params.clear()
+                st.query_params["login"] = "staff" if guest else "guest"
+                st.rerun()
+        if st.button("Sign out"):
             if guest and S.get("active_call"):
                 request("POST", f"/calls/{S.active_call}/end")
-            S.clear()
             st.query_params.clear()
-            st.query_params["login"] = "staff" if guest else "guest"
+            S.clear()
             st.rerun()
-    if st.button("Sign out"):
-        if guest and S.get("active_call"):
-            request("POST", f"/calls/{S.active_call}/end")
-        st.query_params.clear()
-        S.clear()
-        st.rerun()
-    if guest:
-        lang = st.selectbox(
-            "App language / 语言 / भाषा / Bahasa / ဘာသာစကား",
-            list(NAMES),
-            index=list(NAMES).index(me["language"]),
-            format_func=NAMES.get,
-            key="guest_locale",
-        )
-        if lang != me["language"]:
-            request("PUT", "/language", params={"value": lang})
-            st.rerun()
+        if guest:
+            lang = st.selectbox(
+                "App language / 语言 / भाषा / Bahasa / ဘာသာစကား",
+                list(NAMES),
+                index=list(NAMES).index(me["language"]),
+                format_func=NAMES.get,
+                key="guest_locale",
+            )
+            if lang != me["language"]:
+                request("PUT", "/language", params={"value": lang})
+                st.rerun()
+
+
+with account:
+    account_controls()
+
 pages = (
     ["Reception", "My requests"]
     if guest
@@ -1162,6 +1173,17 @@ if guest and (S.get("active_call") or S.get("call_key")):
     phone_panel()
     if S.get("active_call"):
         st.stop()
+# Show the confirmed hang-up receipt before unrelated history/inbox reads.
+# Those reads can stop a rerun on a network error; they must not hide it.
+if guest and (S.get("completed_call") or S.get("request_receipt")):
+    from hotel.post_call_ui import request_popup
+
+    loading_slot.empty()
+    request_popup(
+        S.get("completed_call") or S.request_receipt,
+        jump,
+        call=bool(S.get("completed_call")),
+    )
 inbox_slot = st.container()
 if me["role"] == "manager" and S.get("settings_open"):
     if st.button("Back to workspace"):
@@ -1200,11 +1222,3 @@ else:
 loading_slot.empty()
 with inbox_slot:
     workspace_updates()
-if guest and (S.get("completed_call") or S.get("request_receipt")):
-    from hotel.post_call_ui import request_popup
-
-    request_popup(
-        S.get("completed_call") or S.request_receipt,
-        jump,
-        call=bool(S.get("completed_call")),
-    )

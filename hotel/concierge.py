@@ -8,6 +8,7 @@ from hotel.knowledge import retrieve
 from hotel import case_notes
 from hotel.procedures import select as select_procedure
 from hotel.nlp import analyze
+from hotel.service_consent import service_consent
 
 ACTIVE = {"Connected", "Connecting", "Ringing"}
 HANDOFF = {"Waiting for reception", "Speaking with reception"}
@@ -167,6 +168,7 @@ def decide(state):
     text = state["english"].strip()
     previous = json.loads(n["analysis"])
     existing = n["outcome"]
+    consent = service_consent(text) if existing == "Service offered" else None
     prior_ex = previous.get("extraction", {})
     constraints = {c["constraint"]: c for c in prior_ex.get("constraints", [])}
     constraints.update(
@@ -179,8 +181,22 @@ def decide(state):
             "constraints": a["extraction"]["constraints"],
         }
         save(db, n, analysis=json.dumps(previous))
+    if existing in HANDOFF and a["urgency"] != "Critical":
+        # A new guest turn should get the current status, not replay the
+        # initial handoff announcement or restart the clarification flow.
+        save(
+            db,
+            n,
+            reply=(
+                "Reception has not accepted your call yet. Your request is still pending."
+                if existing == "Waiting for reception"
+                else "Reception has accepted your call. Please speak with them directly."
+            ),
+        )
+        return {}
     if (
         existing != "Clarification needed"
+        and consent is None
         and a["intent"]["ambiguous"]
         and not a["issues"]
         and not a["extraction"]["constraints"]
@@ -206,9 +222,11 @@ def decide(state):
         return {}
     solution = select_procedure(db, n["hotel"], a["extraction"], a["urgency"])
 
-    if existing in HANDOFF and a["urgency"] != "Critical":
-        return {}
-    agreed = bool(YES.search(text)) and not NEG.search(text)
+    agreed = (
+        consent is True
+        if existing == "Service offered"
+        else bool(YES.search(text)) and not NEG.search(text)
+    )
     if a["urgency"] == "Critical" or STAFF_REQUEST.search(text):
         if (
             a["urgency"] == "Critical"
@@ -306,6 +324,8 @@ def decide(state):
         elif existing == "Service offered" and agreed:
             previous["service_agreement"] = True
             previous.pop("pending_question", None)
+            a["service_agreement"] = True
+            save(db, n, analysis=json.dumps(previous))
             department = previous["department"]
             eta = wait_time(db, n, department)
             ref = dispatch(db, n, previous)
