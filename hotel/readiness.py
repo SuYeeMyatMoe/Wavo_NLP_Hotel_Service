@@ -22,11 +22,18 @@ def wait_for_api(url, *, timeout=120, clock=time.monotonic, sleep=time.sleep):
         try:
             response = request(
                 "GET", url.rstrip("/") + "/healthz",
+                params={"_wavo_wake": time.time_ns()},
+                headers={"Cache-Control": "no-cache", "Accept": "application/json"},
                 timeout=(connect_timeout, min(60, remaining - connect_timeout)),
             )
             if response.ok and response.json().get("status") == "ok":
                 return
-            last_failure = "not_ready"
+            last_failure = "http_" + str(response.status_code)
+            if attempts == 1:
+                logging.getLogger(__name__).warning(
+                    "API readiness pending: status=%d routing=%s",
+                    response.status_code, response.headers.get("x-render-routing", "unspecified"),
+                )
         except (requests.RequestException, ValueError, AttributeError) as exc:
             last_failure = type(exc).__name__
         sleep(max(0, min(2, deadline - clock())))

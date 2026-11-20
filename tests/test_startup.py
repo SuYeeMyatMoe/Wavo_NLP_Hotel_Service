@@ -18,6 +18,8 @@ def test_wake_keeps_cold_request_open(monkeypatch):
     def request(method, url, **kwargs):
         assert method == "GET" and url.endswith("/healthz")
         assert kwargs["timeout"][1] >= 25
+        assert kwargs["headers"]["Cache-Control"] == "no-cache"
+        assert isinstance(kwargs["params"]["_wavo_wake"], int)
         now[0] += 25
         return SimpleNamespace(ok=True, json=lambda: {"status": "ok"})
     monkeypatch.setattr(readiness, "request", request)
