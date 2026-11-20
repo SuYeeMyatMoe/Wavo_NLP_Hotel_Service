@@ -183,3 +183,14 @@ def test_lifespan_health_and_operations(monkeypatch):
         assert client.get("/healthz").json() == {"status": "ok"}
         assert calls == ["start"]
     assert calls == ["start", "close"]
+
+
+def test_worker_auth_survives_cloud_credential_rotation(monkeypatch):
+    from hotel.worker_auth import worker_token
+
+    monkeypatch.setenv("WAVO_WORKER_SECRET", "test-shared-key")
+    monkeypatch.setenv("LIVEKIT_API_SECRET", "backend-project-key")
+    expected = worker_token("call-1")
+    monkeypatch.setenv("LIVEKIT_API_SECRET", "cloud-generated-key")
+    assert worker_token("call-1") == expected
+    assert worker_token("call-2") != expected

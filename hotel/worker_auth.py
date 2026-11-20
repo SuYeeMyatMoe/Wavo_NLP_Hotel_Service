@@ -6,7 +6,11 @@ import hmac
 
 
 def worker_token(key):
-    secret = os.environ.get("LIVEKIT_API_SECRET")
+    # Cloud-hosted LiveKit agents receive generated project credentials. Keep
+    # our call-scoped HMAC independent of those platform-managed credentials.
+    secret = os.environ.get("WAVO_WORKER_SECRET") or os.environ.get(
+        "LIVEKIT_API_SECRET"
+    )
     if not secret:
         raise PermissionError("Live audio unavailable.")
     return hmac.new(

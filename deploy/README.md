@@ -21,13 +21,18 @@ and transcription. No laptop worker is required for the hosted app.
 5. Frontend: Supabase URL and publishable key only. Backend: database URL,
    Supabase server secret, LiveKit credentials, and Gemini key. Never put these
    secrets in browser component data, Git, or deployment logs.
-6. Authenticate the LiveKit CLI to the existing project. Use the repository's
-   Dockerfile and `lk agent create --secrets-file <private-file> --region <region>`.
-   Keep the generated `livekit.toml` for subsequent deployments. LiveKit supplies
+6. Authenticate the LiveKit CLI to the existing project. Run
+   `python deploy/prepare_agent.py`, then
+   `lk agent create .runtime/livekit-agent --secrets-file <private-file> --region ap-south`.
+   Copy the generated `livekit.toml` from that directory to the repository root
+   for subsequent deployments. LiveKit supplies
    project credentials; the private secrets file needs `HOTEL_API_URL`,
    `GOOGLE_API_KEY`, `GEMINI_LIVE_MODEL=gemini-3.1-flash-live-preview`,
    `WAVO_VOICE_IDLE_WORKERS=0`, `WAVO_VOICE_MAX_CALLS=2`, and
-   `WAVO_VOICE_ADMISSION=calls`. Never upload the full local `.env` to the agent.
+   `WAVO_VOICE_ADMISSION=calls`, and `WAVO_WORKER_SECRET` matching the API.
+   LiveKit generates its own project credentials, so the explicit shared worker
+   secret is required for call-scoped backend authentication. Never upload the
+   full local `.env` to the agent.
 7. Confirm guest and staff live calls use the cloud agent. Stop local workers
    connected to the same project during this check to prevent competing dispatch.
 
@@ -73,7 +78,8 @@ Measure each service against its 512 MB budget under guest and staff use.
 
 Automatic deployment is disabled to control free build usage. After pushing,
 manually deploy the intended commit for the two Render services. Redeploy the
-agent using `lk agent deploy --secrets-file <private-file>` and check
+agent using `python deploy/prepare_agent.py`, then
+`lk agent deploy .runtime/livekit-agent --secrets-file <private-file>` and check
 `lk agent status`. Watch each deployment until it is live, then repeat smoke tests.
 
 For rollback, use Render's retained prior deployment and deploy the last known
