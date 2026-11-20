@@ -1,0 +1,58 @@
+.wavo-concierge {
+  display: grid;
+  justify-items: center;
+  width: min(286px, 100%);
+  margin-inline: auto;
+}
+.call-avatar .wavo-concierge { width: min(248px, 70vw); }
+.mascot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  touch-action: pan-y;
+  cursor: pointer;
+}
+.mascot[data-mesh] { cursor: grab; }
+.mascot[data-orbiting] { cursor: grabbing; }
+.mascot:focus-visible {
+  outline: 2px solid var(--brass, #a47749);
+  outline-offset: 3px;
+}
+.mascot::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: auto 18% 8% 18%;
+  height: 13%;
+  background: radial-gradient(ellipse, #1d0c0759, transparent 70%);
+}
+.mascot :is(img, canvas) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.mascot[data-mesh] img { visibility: hidden; }
+@media (prefers-reduced-motion: no-preference) {
+  .mascot:not([data-mesh]) img { animation: wavo-portrait-float 5.1s ease-in-out infinite; }
+}
+@keyframes wavo-portrait-float {
+  0%, 100% { translate: 0 3px; rotate: -1.5deg; }
+  50% { translate: 0 -5px; rotate: 1.5deg; }
+}
+.wavo-mascot-help {
+  margin-top: 7px;
+  color: var(--muted, #c8ab8c);
+  font: 500 12px/1.45 var(--wavo-body);
+  text-align: center;
+}
+.wavo-concierge:not(:has([data-mesh])) .wavo-mascot-help { display: none; }

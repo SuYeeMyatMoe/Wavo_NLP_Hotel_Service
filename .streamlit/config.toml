@@ -2,16 +2,18 @@
 enableStaticServing = true
 headless = true
 [theme]
-base = "light"
-primaryColor = "#70502D"
-backgroundColor = "#FAF7F1"
-secondaryBackgroundColor = "#F1E9DC"
-textColor = "#30251D"
-borderColor = "#D8C7B1"
+base = "dark"
+primaryColor = "#DDB479"
+backgroundColor = "#21140E"
+secondaryBackgroundColor = "#342218"
+textColor = "#F0DFC9"
+borderColor = "#765339"
+dataframeHeaderBackgroundColor = "#493A31"
+dataframeBorderColor = "#6A5549"
 font = "sans serif"
 baseRadius = "medium"
-linkColor = "#70502D"
-chartCategoricalColors = ["#70502D", "#A27D52", "#C4AB89", "#57786A", "#B66D53", "#7B7370"]
+linkColor = "#E7BC80"
+chartCategoricalColors = ["#E7BC80", "#BC946C", "#DDD0A7", "#8AB499", "#DE9D84", "#B1A8AF"]
 [browser]
 gatherUsageStats = false
 [client]

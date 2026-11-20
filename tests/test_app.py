@@ -92,6 +92,11 @@ def test_staff_insights_and_single_call_history(tmp_path, monkeypatch):
     app.run()
     assert not app.exception
     assert any(m.label == "Need attention" for m in app.metric)
+    view = next(w for w in app.get("button_group") if w.key == "analytics_view")
+    view.set_value("Trends").run()
+    assert not app.exception
+    assert any(m.label == "Confirmed resolution" for m in app.metric)
+    assert app.selectbox(key="insights_period").value == 30
     app.session_state.destination = "Calls"
     app.run()
     assert not app.exception
@@ -379,7 +384,7 @@ def test_service_shortcut_survives_login_without_submitting(tmp_path, monkeypatc
     button(guest, "Use demo account").click().run()
     button(guest, "Sign in").click().run()
     assert not guest.exception
-    assert "Wi-Fi" in guest.text_area(key="guest_text").value
+    assert "WiFi" in guest.text_area(key="guest_text").value
     from hotel.ui_client import local
 
     assert (
@@ -399,6 +404,15 @@ def test_work_workspace_and_guest_recording_entry(tmp_path, monkeypatch):
     button(staff, "Use demo account").click().run()
     button(staff, "Sign in").click().run()
     assert any(b.label == "Call AI Reception" for b in staff.button)
+    components = [item.proto.component_name for item in staff.get("bidi_component")]
+    assert any(name.endswith("wavo_concierge") for name in components)
+    assert not any(name.endswith("wavo_vintage_room") for name in components)
+    assert not staff.session_state.get("active_call")
+    staff.toggle(key="show_guest_lobby").set_value(True).run()
+    assert any(
+        item.proto.component_name.endswith("wavo_vintage_room")
+        for item in staff.get("bidi_component")
+    )
     staff.session_state.message_mode = "Voice message"
     staff.run()
     assert not staff.exception and staff.get("audio_input")

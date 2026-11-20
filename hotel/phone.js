@@ -2,7 +2,7 @@
 export default function ({parentElement,data,setStateValue}) {
  const box=parentElement.querySelector('.call-avatar');
  if(box.liveState){box.liveState.data=data;box.liveState.emit=setStateValue;box.liveState.render();return box.liveState.dispose;}
- const $=s=>box.querySelector(s), start=$('.microphone'), end=$('.hangup'), status=$('small'), caption=$('.call-reply'), play=$('.play-reply');
+ const $=s=>box.querySelector(s), start=$('.microphone'), end=$('.hangup'), status=$('small'), caption=$('.call-reply'), play=$('.play-reply'), mascot=$('.mascot');
  const s=box.liveState={data,emit:setStateValue,generation:0,phase:'idle',room:null,stream:null,audio:[],muted:false,call:null,startKey:null,timers:[],metrics:{},blocked:false};
  const title=document.createElement('h2');title.textContent='AI reception';box.prepend(title);
  const roomLabel=document.createElement('p');roomLabel.className='call-room';title.after(roomLabel);
@@ -19,6 +19,10 @@ export default function ({parentElement,data,setStateValue}) {
    if(s.data.retryFinalization&&s.data.retryFinalization!==s.lastRetry){s.lastRetry=s.data.retryFinalization;if(s.call||s.startKey)queueMicrotask(()=>{void finish();});}
    if(s.data.dismissedCall&&s.data.dismissedCall===s.completedCall&&!active()&&!s.ending){s.completedCall=null;s.phase='idle';s.message='';help.textContent='';}
    box.hidden=s.data.visible===false&&!active()&&!s.ending;
+   if(!box.hidden&&!s.mascotMounted&&typeof WavoMascot!=='undefined'){
+     s.mascotMounted=true;
+     requestAnimationFrame(()=>{if(mascot.isConnected)WavoMascot.mountMascot(mascot);});
+   }
    box.classList.toggle('live-launcher',Boolean(s.data.api));box.dataset.mode=s.phase;
    roomLabel.textContent=(s.call?.room||s.data.room)?'Room '+(s.call?.room||s.data.room):'';
    status.textContent=s.message||({idle:'Speak naturally. Wavo follows your language.',connecting:'Connecting…',waiting:'Waiting for AI…',listening:'Listening',speaking:'Wavo is speaking',thinking:'Checking with the hotel…',muted:'Microphone muted',reconnecting:'Reconnecting…',ended:'Call ended',error:'Call could not connect'})[s.phase];
@@ -29,6 +33,13 @@ export default function ({parentElement,data,setStateValue}) {
    meter.hidden=!active();privacy.hidden=!s.data.api;consent.disabled=s.phase==='connecting';
    play.hidden=!s.blocked;play.textContent='Tap to hear Wavo';
    diagnostics.hidden=s.phase==='idle';
+   if(!box.hidden && s.data.focusLauncher && !active()){
+     s.data.focusLauncher=false;
+     requestAnimationFrame(()=>{
+       box.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'nearest'});
+       start.focus({preventScroll:true});
+     });
+   }
    report.textContent='Microphone: '+(s.stream?(s.muted?'muted':'active'):'off')+'\nSpeaker playback: '+(s.blocked?'tap to enable':s.audioContext?.state==='running'?'ready':'off')+'\nAI audio: '+('first_signal_ms' in s.metrics?'received':'waiting')+'\n'+Object.entries(s.metrics).map(([k,v])=>k.replace(/_ms$/,'').replaceAll('_',' ')+': '+(v/1000).toFixed(1)+'s').join('\n');
  };
  async function api(path,body,method='POST',keepalive=false){
@@ -145,10 +156,10 @@ export default function ({parentElement,data,setStateValue}) {
      if(!valid())return;let code=error.code||error.name;
      if(error.reason===window.LivekitClient.ConnectionErrorReason?.NotAllowed&&error.reason!==undefined)code='CALL_TOKEN';
      await finish();
-     const message=({NotAllowedError:'Microphone permission was denied. Allow the microphone in your browser and call again.',NotFoundError:'No microphone found. Connect one and call again.',NotReadableError:'Your microphone is busy. Close other recording apps and retry.',CALL_TOKEN:'The call connection was rejected or expired. Call again for a new connection. If it repeats, check that your computer time is correct.',API_401:'Your sign-in expired. Sign in again to call.',API_403:'This call is unavailable for your reservation.',API_409:'This call attempt has ended. Call again.',NO_WORKER_CONFIG:'Live calling is unavailable. Use the text option for now.'})[code]||'Could not connect. Check your network and try again.';show('error',message);
+     const message=({NotAllowedError:'Microphone permission was denied. Allow the microphone in your browser and call again.',NotFoundError:'No microphone found. Connect one and call again.',NotReadableError:'Your microphone is busy. Close other recording apps and retry.',CALL_TOKEN:'The call connection was rejected or expired. Call again for a new connection. If it repeats, check that your computer time is correct.',API_401:'Your session expired. Sign in again to call.',API_403:'This call is unavailable for your reservation.',API_409:'This call attempt has ended. Call again.',NO_WORKER_CONFIG:'Live calling is unavailable. Use the text option for now.'})[code]||'Could not connect. Check your network and try again.';show('error',message);
    }
  };
  end.onclick=()=>{if(active()||s.call||s.startKey)void finish();else{caption.textContent='';help.textContent='';show('idle');}};
- const mascot=$('.mascot');mascot.setAttribute('aria-label','Your bear concierge');mascot.onclick=()=>{mascot.classList.remove('wave');void mascot.offsetWidth;mascot.classList.add('wave');};
+ mascot.setAttribute('aria-label',s.data.mascot||'Make Wavo wink');
  s.render();return s.dispose;
 }

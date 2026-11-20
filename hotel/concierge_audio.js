@@ -58,11 +58,10 @@ export default function({parentElement,data,setTriggerValue,setStateValue}) {
     button.setAttribute("aria-pressed",String(!!state.muted));
   };
   const mascot=box.querySelector(".mascot");
+  if(typeof WavoMascot!=="undefined")WavoMascot.mountMascot(mascot);
   mascot.setAttribute("aria-label",data.replay);
   mascot.title=data.replay;
-  mascot.onanimationend=()=>mascot.classList.remove("wave");
   mascot.onclick=()=>{
-    mascot.classList.remove("wave");void mascot.offsetWidth;mascot.classList.add("wave");
     if(!state.stream){button.onclick();return;}
     if(state.mode!=="thinking"){state.revision="";reply();}
   };

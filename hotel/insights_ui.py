@@ -3,32 +3,45 @@
 import altair as alt
 import pandas as pd
 import streamlit as st
+from hotel.ui_copy import words
 from hotel.ui_client import request
 
-BRONZE = "#80643E"
-GREEN = "#50785F"
+BRONZE = "#DDB479"
+GREEN = "#8AB499"
 
 
 def render(jump):
-    st.title("Service insights")
-    st.caption("Spot delays. Coordinate the team. Confirm the guest is helped.")
-    days = st.segmented_control(
-        "Performance period",
-        [7, 30, 90, 0],
-        format_func=lambda d: f"{d} days" if d else "All time",
-        default=30,
-        key="insights_period",
+    st.title("Service analytics")
+    view = st.segmented_control(
+        "Analytics view",
+        ["Live overview", "Trends"],
+        default="Live overview",
+        key="analytics_view",
     )
-    data = request(
-        "GET", "/insights", params={"days": days if days is not None else 30}
-    )
-    st.caption(
-        f"{data['scope']} · Updated {data['as_of'][:16].replace('T', ' ')} UTC · Current workload includes older open requests."
-    )
-    st.caption("Figures use stored hotel records, including demo and test activity.")
+    days = 30
+    if view == "Trends":
+        days = st.selectbox(
+            "Date range",
+            [7, 30, 90, 0],
+            index=1,
+            format_func=lambda period: f"Last {period} days" if period else "All time",
+            key="insights_period",
+        )
+    data = request("GET", "/insights", params={"days": days})
+    scope = "All hotel teams" if data["scope"] == "Hotel-wide" else data["scope"]
+    st.caption(f"{scope} · Updated {data['as_of'][:16].replace('T', ' ')} UTC")
+    if view == "Trends":
+        trends(data)
+        return
+    current_work(data, jump)
+
+
+def current_work(data, jump):
+    st.subheader("Current workload")
+    st.caption("Includes all open requests, regardless of when they were created.")
     c = data["current"]
     known_targets = data["unresolved"] - c["awaiting_guest"] - c["missing_deadlines"]
-    with st.container(horizontal=True):
+    with st.container(horizontal=True, key="analytics_summary"):
         st.metric(
             "Open requests",
             data["unresolved"],
@@ -45,13 +58,13 @@ def render(jump):
             "Past service target",
             c["overdue_service"] if known_targets else "—",
             border=True,
-            help=f"{known_targets} open requests have a recorded service deadline; {c['missing_deadlines']} have none. Awaiting-confirmation work is excluded.",
+            help=f"{known_targets} open requests have a recorded service deadline; {c['missing_deadlines']} have none. Requests awaiting confirmation are excluded.",
         )
         st.metric(
             "Awaiting guest",
             c["awaiting_guest"],
             border=True,
-            help="Staff-reported completion is still open until the guest confirms.",
+            help="Work reported complete by staff stays open until the guest confirms.",
         )
 
     immediate = sum(
@@ -59,7 +72,7 @@ def render(jump):
     )
     if immediate:
         st.error(
-            f"{immediate} request(s) need immediate safety or urgency review. Start with the highest-priority row below.",
+            f"{immediate} request(s) need immediate safety or urgency review. Start with the row with the highest priority below.",
             title="Reception review comes first",
         )
         if c["unassigned"]:
@@ -107,7 +120,7 @@ def render(jump):
             [
                 {
                     "Room": r["Room"],
-                    "Problem": r["Problem"],
+                    "Problem": words(r["Problem"]),
                     "Priority": r["Priority"],
                     "Needs attention": r["Needs attention"],
                     "Open (min)": r["Open (min)"],
@@ -117,6 +130,9 @@ def render(jump):
             ],
             hide_index=True,
             row_height=48,
+            column_order=[
+                "Room", "Action", "Problem", "Priority", "Needs attention", "Open (min)"
+            ],
             height=min(360, 55 + 48 * len(alerts)),
             column_config={
                 "Action": st.column_config.ButtonColumn(
@@ -136,7 +152,7 @@ def render(jump):
         st.dataframe(
             data["workload"],
             hide_index=True,
-            alt="Current open, in-progress, awaiting-guest and overdue requests by team member",
+            alt="Open requests, progress, guest confirmations and delays by team member",
         )
         st.caption(
             "Current assigned workload; this is not a staff productivity score. Unassigned work remains visible."
@@ -144,10 +160,13 @@ def render(jump):
     else:
         st.caption("No open assignments.")
 
+
+
+def trends(data):
     st.subheader("Service outcomes")
     total = data["tickets"]
     minutes = data["median_resolution_minutes"]
-    with st.container(horizontal=True):
+    with st.container(horizontal=True, key="analytics_outcomes"):
         st.metric(
             "Confirmed resolution",
             f"{100 * data['confirmation_rate']:.0f}%" if total else "—",
@@ -158,7 +177,7 @@ def render(jump):
             "Typical resolution",
             f"{minutes:.0f} min" if minutes is not None else "—",
             border=True,
-            help=f"Median creation-to-final-confirmation time. Sample: {data['resolution_sample']} confirmed requests opened in the selected period.",
+            help=f"Median time from opening the request to final confirmation. Sample: {data['resolution_sample']} confirmed requests opened in the selected period.",
         )
         st.metric(
             "Needed another attempt",
@@ -170,10 +189,10 @@ def render(jump):
             "Calls resolved without a task",
             data["calls"]["self_service"],
             border=True,
-            help=f"Of {data['calls']['ended']} ended inbound calls opened in this period, these recorded guest-confirmed resolution, no service task and no staff join. Not an estimate of money or time saved.",
+            help=f"Of {data['calls']['ended']} ended inbound calls opened in this period, these recorded resolution confirmed by the guest, no service task and no staff join. Not an estimate of money or time saved.",
         )
     st.caption(
-        f"{total} requests opened in the selected period · {data['resolution_sample']} confirmed resolution-time samples · {data['calls']['ended']} ended inbound calls. Small samples are descriptive, not performance guarantees."
+        f"{total} requests opened in the selected period · {data['resolution_sample']} confirmed resolution times · {data['calls']['ended']} ended inbound calls. Small samples are descriptive, not performance guarantees."
     )
 
     left, right = st.columns(2)
@@ -243,6 +262,7 @@ def render(jump):
         st.subheader("What is keeping work open?")
         if data["open_problems"]:
             frame = pd.DataFrame(data["open_problems"][:6])
+            frame["Problem"] = frame["Problem"].map(words)
             chart = (
                 alt.Chart(frame)
                 .mark_bar(color=BRONZE, cornerRadiusEnd=3)
@@ -295,5 +315,5 @@ def render(jump):
                 alt="Sentiment counts for requests opened in the selected period",
             )
         st.caption(
-            "Sentiment is an English-language heuristic, not guest satisfaction, urgency or revenue. Missing scores stay labelled. Demo and test records are included; these are not production business results."
+            "Sentiment is an heuristic for English text, not guest satisfaction, urgency or revenue. Missing scores stay labelled. Demo and test records are included; these are not production business results."
         )

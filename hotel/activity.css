@@ -1,17 +1,17 @@
-.wavo-activity-summary{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:0 0 12px;color:#776a5b;font-size:13px}
-.wavo-activity-state{display:inline-flex;align-items:center;border:1px solid #d8c7b1;border-radius:20px;padding:5px 12px;color:#70502d;background:#f1e9dc;font-weight:600}
-.wavo-activity-state.success{background:#eaf1eb;border-color:#b8cdbd;color:#345a42}
-.wavo-activity-state.attention{background:#fbefe4;border-color:#dfbfa0;color:#875129}
+.wavo-activity-summary{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:0 0 12px;color:var(--muted);font-size:13px}
+.wavo-activity-state{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:20px;padding:5px 12px;color:var(--gold);background:var(--control);font-weight:600}
+.wavo-activity-state.success{background:var(--success-surface);color:var(--success-ink)}
+.wavo-activity-state.attention{background:var(--alert-surface);color:var(--alert-ink)}
 .wavo-timeline{list-style:none;margin:0!important;padding:0!important;max-width:900px}
 .wavo-timeline-entry{list-style:none;margin:0!important;padding:0!important;position:relative}
-.wavo-timeline-date{font-size:12px;letter-spacing:.04em;color:#786a58;padding:16px 0 9px 48px}
-.wavo-timeline-row{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:16px;align-items:center;min-height:60px;position:relative;padding:10px 16px 10px 0;border-bottom:1px solid #e9dfd1}
-.wavo-timeline-entry:not(:last-child) .wavo-timeline-row:after{content:"";position:absolute;left:15px;top:calc(50% + 17px);bottom:-32px;width:2px;background:#e3d4c0}
-.wavo-timeline-marker{position:relative;z-index:1;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;border:1px solid #d8c7b1;background:#f1e9dc;color:#70502d;font:600 17px/1 system-ui}
-.success .wavo-timeline-marker{background:#eaf1eb;border-color:#b8cdbd;color:#345a42}
-.attention .wavo-timeline-marker{background:#fbefe4;border-color:#dfbfa0;color:#875129}
+.wavo-timeline-date{font-size:12px;letter-spacing:.04em;color:var(--muted);padding:16px 0 9px 48px}
+.wavo-timeline-row{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:16px;align-items:center;min-height:60px;position:relative;padding:10px 16px 10px 0;border-bottom:1px solid var(--line)}
+.wavo-timeline-entry:not(:last-child) .wavo-timeline-row:after{content:"";position:absolute;left:15px;top:calc(50% + 17px);bottom:-32px;width:2px;background:var(--line)}
+.wavo-timeline-marker{position:relative;z-index:1;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--control);color:var(--gold);font:600 17px/1 system-ui}
+.success .wavo-timeline-marker{background:var(--success-surface);color:var(--success-ink)}
+.attention .wavo-timeline-marker{background:var(--alert-surface);color:var(--alert-ink)}
 .wavo-timeline-content{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;min-width:0}
-.wavo-timeline-content strong{font-size:15px;font-weight:550;line-height:1.5;color:#30251d;overflow-wrap:anywhere}
-.wavo-timeline-latest{font-size:11px;color:#70502d;background:#f0e5d4;border-radius:5px;padding:3px 7px;white-space:nowrap}
-.wavo-timeline-time{font-size:13px;font-variant-numeric:tabular-nums;color:#776a5b;text-align:right;white-space:nowrap}
+.wavo-timeline-content strong{font-size:15px;font-weight:600;line-height:1.5;color:var(--ink);overflow-wrap:anywhere}
+.wavo-timeline-latest{font-size:11px;color:var(--gold);background:var(--raised);border-radius:5px;padding:3px 7px;white-space:nowrap}
+.wavo-timeline-time{font-size:13px;font-variant-numeric:tabular-nums;color:var(--muted);text-align:right;white-space:nowrap}
 @media(max-width:600px){.wavo-timeline-row{grid-template-columns:28px minmax(0,1fr) auto;gap:12px;padding-right:0}.wavo-timeline-marker{width:28px;height:28px}.wavo-timeline-entry:not(:last-child) .wavo-timeline-row:after{left:13px;top:calc(50% + 15px)}.wavo-timeline-date{padding-left:40px}.wavo-timeline-content strong{font-size:14px}.wavo-timeline-time{font-size:12px}.wavo-activity-summary{font-size:12px}}

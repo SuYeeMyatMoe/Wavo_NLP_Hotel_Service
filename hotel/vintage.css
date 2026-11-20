@@ -1,0 +1,566 @@
+@font-face {
+  font-family: Arvo;
+  src: url("app/static/arvo-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Arvo;
+  src: url("app/static/arvo-latin-700-normal.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Cormorant Garamond";
+  src: url("app/static/cormorant-garamond-600.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+
+/* Wavo's vintage room palette, shared by every native Streamlit workspace. */
+:root {
+  --wavo-heading: var(--wavo-body);
+  --wavo-body: Arvo, Georgia, serif;
+  --wavo-brand-image: url("app/static/wavo-icon.png");
+  --ink: #f0dfc9;
+  --navy: #f0dfc9;
+  --gold: #e7bc80;
+  --muted: #c8ab8c;
+  --line: #765339;
+  --paper: #21140e;
+  --surface: #2b1b13;
+  --brass: #b78b54;
+  --ambient: #432718;
+  --masthead: #382218;
+  --raised: #3e281b;
+  --control: #362319;
+  --hover: #543522;
+  --accent: #e0b476;
+  --accent-hover: #f1c88d;
+  --accent-ink: #241409;
+  --alert-ink: #f9cf9b;
+  --alert-surface: #482d17;
+  --danger-surface: #582b25;
+  --danger-ink: #ffddd3;
+  --success-surface: #24372a;
+  --success-ink: #baebc7;
+  --veil: #1b100bd9;
+  --spark: #ffe8a4;
+  --spark-glow: #ffc259;
+  --glass-panel: linear-gradient(135deg, #f2ddc21c, #e3c8b407 70%), #392d27a8;
+  --glass-control: #604d4166;
+  --glass-hover: #765e5088;
+  --glass-line: #edcfaf43;
+  --glass-glow: #79635664;
+  --glass-shadow: 0 15px 38px #0e070626, inset 0 1px #fff0d610;
+  --glass-filter: blur(16px) saturate(115%);
+  --glass-control-filter: blur(9px) saturate(110%);
+}
+
+:root[data-wavo-theme="light"] {
+  color-scheme: light;
+  --ink: #2c1b0f;
+  --navy: #2c1b0f;
+  --gold: #683e1d;
+  --muted: #58412e;
+  --line: #a47d53;
+  --paper: #eed9b7;
+  --surface: #f6e6c9;
+  --brass: #87552d;
+  --ambient: #e2bf8c;
+  --masthead: #efd6af;
+  --raised: #edd4ad;
+  --control: #f2ddbb;
+  --hover: #e4c396;
+  --accent: #e2b985;
+  --accent-hover: #d9ac73;
+  --accent-ink: #2c1b0f;
+  --alert-ink: #673908;
+  --alert-surface: #f7e3c5;
+  --danger-surface: #f5d9cf;
+  --danger-ink: #732f25;
+  --success-surface: #e2e8c9;
+  --success-ink: #294832;
+  --veil: #f4e7d4d9;
+  --spark: #b36723;
+  --spark-glow: #db912d;
+  --glass-panel: linear-gradient(135deg, #fff8e952, #fff2d21a 70%), #f3debbbc;
+  --glass-control: #fff3d98c;
+  --glass-hover: #f5d7a6c4;
+  --glass-line: #89603b65;
+  --glass-glow: #fff1c8b2;
+  --glass-shadow: 0 15px 38px #875a3020, inset 0 1px #fffbeb83;
+}
+
+.stApp {
+  background:
+    radial-gradient(ellipse at 88% 33%, var(--glass-glow), transparent 60%),
+    radial-gradient(ellipse at 24% 0%, var(--ambient), var(--paper) 65%);
+  color: var(--ink);
+}
+
+.stApp .st-key-masthead {
+  background: var(--glass-panel);
+  border: 1px solid var(--glass-line);
+  border-radius: 13px;
+  padding: 6px 16px;
+  backdrop-filter: var(--glass-filter);
+}
+.brand small, .hotel-overline { color: var(--gold); }
+.wavo-lockup {
+  display: inline-flex;
+  align-items: center;
+  font: 600 2.2rem/.9 "Cormorant Garamond", Georgia, serif;
+  letter-spacing: -.045em;
+}
+.wavo-lockup::before {
+  content: "";
+  width: 1em;
+  height: 1em;
+  flex: none;
+  background: #f3dec0;
+  mask: var(--wavo-brand-image) center / contain no-repeat;
+}
+[data-wavo-theme="light"] .wavo-lockup::before {
+  background: var(--wavo-brand-image) center / contain no-repeat;
+  mask: none;
+}
+.wavo-lockup > span { margin-inline-start: -.065em; }
+.hotel-mark .wavo-lockup { font-size: clamp(2.05rem, 3vw, 2.75rem); }
+[data-wavo-theme="light"] .public-nav :is(.nav-login, .hotel-mark) { color: var(--ink); }
+.stApp .st-key-workspace_nav { border-bottom: 1px solid var(--line); }
+.stApp [data-testid="stSegmentedControl"] button { border-color: var(--line); }
+.stApp [data-testid="stForm"], .stApp [data-testid="stVerticalBlockBorderWrapper"] {
+  border-color: var(--line);
+}
+.stApp .hero {
+  background:
+    linear-gradient(90deg, var(--raised) 20%, color-mix(in srgb, var(--raised) 85%, transparent) 58%, color-mix(in srgb, var(--raised) 32%, transparent) 100%),
+    url('app/static/room-detail.jpg') right 52% / auto 180% no-repeat,
+    var(--raised);
+  border-color: var(--glass-line);
+  backdrop-filter: var(--glass-filter);
+}
+.stApp .hero h1 em { color: var(--gold); }
+.stApp .result, .stApp .token {
+  color: var(--ink);
+  background: var(--glass-control);
+  border: 1px solid var(--glass-line);
+}
+.stApp .result small, .stApp .datum small { color: var(--muted); }
+
+.stApp :is(.st-key-vintage_arrival, .st-key-guest_vintage_room) {
+  width: var(--wavo-workspace-width, 100vw);
+  max-width: none;
+  margin-inline: calc(50% - var(--wavo-workspace-width, 100vw) / 2);
+  background: #170c05;
+}
+[data-wavo-theme="light"] .stApp :is(.st-key-vintage_arrival, .st-key-guest_vintage_room) { background: var(--raised); }
+.stApp:has(.st-key-vintage_arrival) .block-container { padding-top: 0; }
+.stApp:has(:is(.st-key-vintage_arrival, .st-key-guest_vintage_room)) [data-testid="stMain"] {
+  overflow-x: hidden;
+}
+.public-nav, .hotel-footer { border-color: var(--line); }
+@media (prefers-reduced-motion: no-preference) {
+  .stApp:has(.st-key-vintage_arrival) [data-testid="stMain"] { scroll-behavior: smooth; }
+  [data-wavo-revealed]:not(:focus-within) {
+    animation: wavo-reveal 520ms cubic-bezier(.22,.61,.36,1) var(--wavo-reveal-delay, 0ms) backwards;
+  }
+}
+@keyframes wavo-reveal {
+  from { opacity: 0; translate: 0 20px; }
+  to { opacity: 1; translate: 0 0; }
+}
+.shortcut-grid a, .service-images a {
+  color: var(--ink);
+  background: var(--glass-panel);
+  border-color: var(--glass-line);
+  border-radius: 17px;
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-filter);
+}
+.shortcut-grid a {
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  min-height: 115px;
+  text-align: center;
+}
+.shortcut-grid a > .service-icon {
+  width: 35px;
+  height: 35px;
+  background: #f3dec0;
+  mask: var(--service-icon) center / contain no-repeat;
+}
+[data-wavo-theme="light"] .shortcut-grid .service-icon { background: var(--gold); }
+.shortcut-grid a > span:last-child {
+  margin: 0;
+  color: var(--ink);
+  font-size: inherit;
+}
+.service-copy { justify-items: center; text-align: center; }
+.shortcut-grid a:hover, .shortcut-grid a:focus-visible { background-color: var(--glass-hover); }
+.service-images a {
+  transition: background-color .24s ease, border-color .24s ease, box-shadow .24s ease, transform .24s ease;
+}
+.service-images a:hover, .service-images a:focus-visible {
+  background-color: var(--glass-hover);
+  border-color: var(--accent);
+  box-shadow: 0 12px 25px #24140822;
+}
+.service-gallery {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: var(--surface);
+  overflow: hidden;
+}
+.service-gallery img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 53%;
+  opacity: 0;
+  transition: opacity .64s ease, filter .24s ease;
+}
+.service-gallery img[aria-hidden="false"] { opacity: 1; }
+.service-gallery img[src$="reception-desk.jpg"] { object-position: center 61%; }
+.service-images a:hover img { filter: saturate(1.08) brightness(1.04); }
+.hotel-footer {
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  margin-top: clamp(28px, 5vw, 60px);
+}
+.hotel-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 clamp(14px, 3vw, 28px);
+}
+.hotel-footer nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: .84rem;
+}
+.hotel-footer nav a:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+[data-wavo-card] {
+  display: grid;
+  min-width: 0;
+}
+[data-wavo-card] > a {
+  user-select: none;
+  transition:
+    transform .46s cubic-bezier(.2,.76,.28,1.22),
+    background-color .24s ease, border-color .24s ease, box-shadow .24s ease;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-wavo-card][data-wavo-card-active] { z-index: 3; position: relative; }
+  [data-wavo-card][data-wavo-card-active] > a {
+    transform: perspective(720px) translate3d(var(--card-drift, 0px), -6px, 0)
+      rotateX(var(--card-pitch, 0deg)) rotateY(var(--card-yaw, 0deg)) scale(1.018);
+    transition-duration: .14s, .24s, .24s, .24s;
+  }
+  [data-wavo-card] > a:active {
+    transform: perspective(720px) scale(.976);
+    transition-duration: .09s;
+  }
+}
+
+.stApp:has(.st-key-hotel_login) .block-container > [data-testid="stVerticalBlock"] {
+  min-height: calc(100svh - 5rem);
+  justify-content: center;
+}
+.stApp .st-key-hotel_login {
+  width: min(100%, 590px);
+  margin: 12px auto 0;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--glass-line);
+  border-radius: 20px;
+  box-shadow: var(--glass-shadow);
+}
+.login-banner {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 166px;
+  padding: clamp(18px, 5vw, 34px);
+  background: var(--raised);
+  border-bottom: 1px solid var(--glass-line);
+}
+.login-banner::before,
+.login-banner::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+}
+.login-banner::before {
+  inset: -6px;
+  background: var(--login-photo) right center / cover no-repeat;
+  filter: blur(5px);
+}
+.login-banner[data-entrance="guest"] { --login-photo: url("app/static/room-detail.jpg"); }
+.login-banner[data-entrance="staff"] { --login-photo: url("app/static/reception.jpg"); }
+.login-banner::after {
+  background: linear-gradient(90deg, var(--raised) 15%, color-mix(in srgb, var(--raised) 94%, transparent) 57%, color-mix(in srgb, var(--raised) 28%, transparent) 100%);
+}
+.login-banner h1 {
+  font-size: clamp(28px, 5vw, 42px);
+  margin: 12px 0 4px;
+}
+.login-banner p { margin: 0; max-width: 34ch; font-size: .9rem; }
+.login-banner .hotel-mark { width: fit-content; color: var(--ink); text-decoration: none; }
+.login-banner .wavo-lockup { font-size: 1.86rem; }
+.st-key-login_fields { padding: clamp(16px, 5vw, 30px); }
+.stApp .st-key-login_fields [data-testid="stForm"] {
+  padding: 0;
+  border: 0;
+  background: transparent !important;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.login-links {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 2px 18px;
+}
+.login-links a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: var(--gold);
+  font-size: .86rem;
+  text-underline-offset: 4px;
+}
+.st-key-workspace_nav [role="group"] { flex-wrap: wrap; }
+.st-key-workspace_nav button { white-space: normal; }
+.stApp :is(.st-key-dashboard_summary, .st-key-analytics_summary, .st-key-analytics_outcomes) {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.stApp :is(.st-key-dashboard_summary, .st-key-analytics_summary, .st-key-analytics_outcomes) [data-testid="stMetricLabel"] p {
+  white-space: normal;
+}
+@media (max-width: 760px) {
+  .stApp :is(.st-key-dashboard_summary, .st-key-analytics_summary, .st-key-analytics_outcomes) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.st-key-guest_lobby .st-key-guest_vintage_room {
+  width: 100%;
+  margin-inline: 0;
+  overflow: hidden;
+  border-radius: 12px;
+}
+.stApp [data-wavo-panel],
+.stApp [data-testid="stForm"],
+.stApp .st-key-guest_welcome,
+.stApp .st-key-call_screen,
+.st-key-post_call_receipt,
+.stApp .st-key-home_progress {
+  background: var(--glass-panel) !important;
+  border-color: var(--glass-line) !important;
+  border-radius: 18px;
+  color: var(--ink);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-filter);
+}
+[role="dialog"]:has(.st-key-post_call_receipt),
+.react-aria-Popover:has([data-testid="stPopoverBody"]) {
+  background: var(--glass-panel);
+  color: var(--ink);
+  border: 1px solid var(--glass-line);
+  backdrop-filter: var(--glass-filter);
+}
+.st-key-post_call_receipt :is(h3, p, summary, button) { color: var(--ink); }
+.st-key-post_call_receipt [data-testid="stCaptionContainer"] { color: var(--muted); opacity: 1; }
+.st-key-post_call_receipt [data-testid="stCaptionContainer"] p { color: inherit; }
+.st-key-post_call_receipt :is(details, [data-testid="stAlertContainer"]) {
+  background: var(--glass-control);
+  border: 1px solid var(--glass-line);
+}
+.st-key-post_call_receipt [data-testid="stAlertContainer"] { color: var(--alert-ink); background: var(--alert-surface); }
+.st-key-post_call_receipt [data-testid="stAlertContainer"] p { color: inherit; }
+.stApp .wavo-loading { background: var(--veil); }
+.stApp .wavo-loading-card {
+  background: var(--glass-panel);
+  color: var(--ink);
+  border-color: var(--line);
+}
+.stApp .wavo-loading-bell { background: var(--brass); }
+.stApp .wavo-loading-bell::before, .stApp .wavo-loading-bell::after {
+  background: var(--brass);
+}
+.stApp :is([data-testid="stMetric"], [data-testid="stDataFrame"], [data-testid="stTable"], [data-testid="stVegaLiteChart"]) {
+  border: 1px solid var(--glass-line);
+  border-radius: 16px;
+  background: var(--glass-panel);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-filter);
+}
+.stApp [data-testid="stMetric"] { padding: .8rem; }
+.stApp .st-key-wavo_workspace_effects { display: none; }
+.cursor-embers {
+  position: fixed; inset: 0; z-index: 2147483647;
+  overflow: hidden; pointer-events: none;
+}
+.cursor-embers i {
+  position: absolute; width: 4px; height: 4px;
+  background: var(--spark); border-radius: 1px;
+  box-shadow: 0 0 4px 1px var(--spark-glow);
+}
+.cursor-embers .ember-bright {
+  width: 7px;
+  height: 7px;
+  box-shadow: 0 0 8px 2px var(--spark-glow);
+}
+
+:is(.stApp, [role="dialog"]) :is([data-testid="stButton"] button, [data-testid="stFormSubmitButton"] button, [data-testid="stPopoverButton"], [data-testid="stDownloadButton"] button, [data-testid="stLinkButton"] a, button[data-variant="segmented_control"], .nav-login) {
+  transition: transform .2s ease, background-color .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+@media (hover: hover) {
+  :is(.stApp, [role="dialog"]) :is([data-testid="stButton"] button, [data-testid="stFormSubmitButton"] button, [data-testid="stPopoverButton"], [data-testid="stDownloadButton"] button, [data-testid="stLinkButton"] a, button[data-variant="segmented_control"], .nav-login):not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px #170a0724;
+  }
+}
+:is(.stApp, [role="dialog"]) :is([data-testid="stButton"] button, [data-testid="stFormSubmitButton"] button, [data-testid="stPopoverButton"], [data-testid="stDownloadButton"] button, [data-testid="stLinkButton"] a, button[data-variant="segmented_control"], .nav-login):not(:disabled):active {
+  transform: translateY(0);
+}
+
+[data-wavo-theme="light"] :is(.stApp, [role="dialog"], .react-aria-Popover) :is(h1, h2, h3, h4, label, p, legend, [data-testid="stMetricValue"], [data-testid="stMarkdownContainer"], [data-testid="stCaptionContainer"], [data-testid="stWidgetLabel"]) {
+  color: var(--ink);
+}
+[data-wavo-theme="light"] :is(.stApp, [role="dialog"], .react-aria-Popover) :is([data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p, [data-testid="stHelp"]) {
+  color: var(--muted);
+  opacity: 1;
+}
+[data-wavo-theme="light"] :is(.stApp, [role="dialog"]) input::placeholder,
+[data-wavo-theme="light"] :is(.stApp, [role="dialog"]) textarea::placeholder { color: var(--muted); }
+:root :is([data-baseweb="input"], [data-baseweb="base-input"], [data-baseweb="textarea"], [data-baseweb="select"] > div, [data-baseweb="menu"], [data-testid="stPopoverBody"], [data-testid="stExpander"] details, [data-baseweb="tab-panel"]) {
+  background-color: var(--glass-control);
+  color: var(--ink);
+  border-color: var(--glass-line);
+}
+.stApp [data-testid="stExpander"] details { backdrop-filter: var(--glass-control-filter); }
+:root :is(.react-aria-ComboBox > [role="group"], [data-testid="stTextInputRootElement"], [data-testid="stTextAreaRootElement"], [data-testid="stNumberInputContainer"], [data-testid="stDateInputField"], [data-testid="stTimeInputTimeDisplay"], [data-testid="stMultiSelectTagsContainer"], [data-testid="stSelectboxVirtualDropdown"], [data-testid="stMultiSelectDropdown"]) {
+  background-color: var(--glass-control);
+  color: var(--ink);
+  border-color: var(--glass-line);
+  backdrop-filter: var(--glass-control-filter);
+}
+:root :is(.react-aria-Popover, [role="dialog"]) {
+  background: var(--glass-panel);
+  color: var(--ink);
+  border-color: var(--glass-line);
+  backdrop-filter: var(--glass-filter);
+}
+[data-wavo-theme="light"] :is([data-testid="stTextInputRootElement"], [data-testid="stNumberInputContainer"], .react-aria-ComboBox > [role="group"], [role="dialog"]) button:not([data-testid^="stBaseButton-"]) {
+  color: var(--ink);
+}
+[data-wavo-theme="light"] :is(.stApp, [role="dialog"], .react-aria-Popover) :is(input, textarea, [data-baseweb="select"], [role="listbox"], [role="option"], [role="tab"], [data-testid="stNotificationContentInfo"]) {
+  color: var(--ink);
+}
+[data-wavo-theme="light"] [role="option"]:is(:hover, [aria-selected="true"]) { background: var(--hover); }
+[data-wavo-theme="light"] :is([role="option"], [role="listbox"]) { color: var(--ink); }
+[data-wavo-theme="light"] .stApp [data-testid="stMarkdownContainer"] a { color: var(--gold); }
+:is(.stApp, [role="dialog"], .react-aria-Popover) :is(
+  button[kind="secondary"], button[kind="secondaryFormSubmit"], [data-testid="stPopoverButton"],
+  [data-testid="stBaseLinkButton-secondary"], button[data-variant="segmented_control"]
+) {
+  background: var(--glass-control);
+  color: var(--ink);
+  border-color: var(--glass-line);
+  backdrop-filter: var(--glass-control-filter);
+}
+:is(.stApp, [role="dialog"], .react-aria-Popover) :is(
+  button[kind="secondary"], button[kind="secondaryFormSubmit"], [data-testid="stPopoverButton"],
+  [data-testid="stBaseLinkButton-secondary"], button[data-variant="segmented_control"]
+):is(:hover, [aria-pressed="true"]) {
+  background: var(--glass-hover);
+  color: var(--ink);
+}
+:is(.stApp, [role="dialog"], .react-aria-Popover) :is(button[kind="primary"], button[kind="primaryFormSubmit"], a[data-testid="stBaseLinkButton-primary"]) {
+  background: color-mix(in srgb, var(--accent) 88%, transparent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  backdrop-filter: var(--glass-control-filter);
+}
+:is(.stApp, [role="dialog"], .react-aria-Popover) :is(button[kind="primary"], button[kind="primaryFormSubmit"], a[data-testid="stBaseLinkButton-primary"]):not(:disabled):hover {
+  background: var(--accent-hover);
+  color: var(--accent-ink);
+}
+:is(.stApp, [role="dialog"], .react-aria-Popover) :is(button[kind="primary"], button[kind="primaryFormSubmit"], a[data-testid="stBaseLinkButton-primary"]) :is(p, span) {
+  color: inherit;
+}
+:root button[data-variant="segmented_control"][aria-checked="true"] {
+  color: var(--gold);
+  background: var(--glass-hover);
+  border-color: var(--accent);
+}
+[data-wavo-theme="light"] :is(.stApp, [role="dialog"]) :is([data-testid="stAlert"], [data-testid="stAlertContainer"]) {
+  color: var(--alert-ink);
+  background: var(--alert-surface);
+}
+[data-wavo-theme="light"] :is([data-testid="stDataFrame"], [data-testid="stVegaLiteChart"]) canvas {
+  filter: invert(.94) sepia(.29) saturate(.83) hue-rotate(349deg);
+}
+[data-wavo-theme="light"] [data-testid="stVegaLiteChart"] svg text { fill: var(--ink); }
+[data-wavo-theme="light"] [data-testid="stVegaLiteChart"] svg > rect { fill: var(--paper); }
+
+.receipt-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 0;
+}
+.receipt-details > div {
+  padding: 10px 14px;
+  border: 1px solid var(--glass-line);
+  border-radius: 10px;
+  background: var(--glass-control);
+}
+.receipt-details > div:first-child:last-child,
+.receipt-details > .receipt-problem { grid-column: 1 / -1; }
+.receipt-details dt { color: var(--muted); font-size: .78rem; }
+.receipt-details dd { color: var(--ink); font-weight: 600; margin: .25rem 0 0; }
+.receipt-progress {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.receipt-progress li {
+  padding: 7px 4px;
+  border-top: 2px solid var(--line);
+  color: var(--muted);
+  font-size: .75rem;
+  text-align: center;
+}
+.receipt-progress [data-reached] { border-color: var(--gold); }
+.receipt-progress [aria-current="step"] {
+  font-weight: 700;
+  background: var(--control);
+  color: var(--ink);
+}
+@media (max-width: 479px) {
+  .receipt-details { grid-template-columns: 1fr; gap: 6px; }
+  .receipt-progress { grid-template-columns: repeat(2, 1fr); gap: 7px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cursor-embers { display: none; }
+  .stApp button, .service-images a, .service-images a img {
+    transition: none !important;
+    transform: none !important;
+  }
+}

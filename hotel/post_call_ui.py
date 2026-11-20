@@ -1,8 +1,57 @@
 """A compact service receipt using only backend-confirmed call outcomes."""
 
+from html import escape
 from uuid import uuid4
 import streamlit as st
+from hotel.ui_copy import words
 from hotel.ui_client import request, _cache
+
+PROGRESS = (
+    ("Assigned", "Assigned"),
+    ("In progress", "In progress"),
+    ("Awaiting confirmation", "Your confirmation"),
+    ("Resolved", "Resolved"),
+)
+
+
+def receipt_details(result):
+    person = result["assignment"] or {}
+    name = person.get("name", "")
+    team = person.get("department", "")
+    handler = f"{name} · {team}" if team and team not in name else name
+    fields = (
+        ("receipt-problem", "Request", words(result["problem"])),
+        ("receipt-room", "Room", result["room"]),
+        ("receipt-handler", "Handled by", handler),
+    )
+    details = "".join(
+        f'<div class="{cls}"><dt>{label}</dt><dd>{escape(str(value))}</dd></div>'
+        for cls, label, value in fields
+        if value
+    )
+    if details:
+        st.markdown(f'<dl class="receipt-details">{details}</dl>', unsafe_allow_html=True)
+
+
+def receipt_progress(result):
+    stage = (
+        "Awaiting confirmation"
+        if result.get("awaiting_confirmation")
+        else "Resolved"
+        if result["outcome"] == "Resolved"
+        else result.get("status")
+    )
+    states = [status for status, _ in PROGRESS]
+    if stage not in states or result["outcome"] == "Reception is following up":
+        return
+    current = states.index(stage)
+    items = []
+    for index, (_, label) in enumerate(PROGRESS):
+        attributes = ' aria-current="step" data-reached' if index == current else (
+            " data-reached" if index < current else ""
+        )
+        items.append(f"<li{attributes}>{label}</li>")
+    st.html('<ol class="receipt-progress" aria-label="Request progress">' + "".join(items) + "</ol>")
 
 
 def estimate_line(estimate):
@@ -105,16 +154,18 @@ def receipt(key, jump, call=True):
     if st.session_state.get("completed_call" if call else "request_receipt") != key:
         return
     with st.container(border=True, key="post_call_receipt"):
-        st.caption("WAVO · REQUEST UPDATE")
-        # This button remains usable even if the following read fails.
-        retry_slot = st.empty()
-        with retry_slot:
+        body = st.container()
+        actions = st.container(horizontal=True, vertical_alignment="center")
+        with actions:
+            track = st.empty()
+            close = st.empty()
             refresh = st.button(
                 "Refresh status",
                 key="receipt_refresh_" + key,
                 icon=":material/refresh:",
+                type="tertiary",
             )
-        loading = st.empty()
+        loading = body.empty()
         if st.session_state.get("receipt_seen") != key:
             loading.caption("Checking your request…")
         path = f"/{'calls' if call else 'tickets'}/{key}/result"
@@ -128,47 +179,45 @@ def receipt(key, jump, call=True):
             cache[cache_key] = result
         loading.empty()
         if not result["finalized"]:
-            st.info("Checking your request…")
+            body.info("Checking your request…")
             return
         st.session_state.receipt_seen = key
         st.session_state.acknowledged_request = result["ticket"]
-        st.subheader(result["outcome"])
-        if result["problem"]:
-            st.write(f"Room {result['room']} · {result['problem']}")
-        elif result["room"]:
-            st.caption("Room " + result["room"])
-        if result["assignment"]:
-            person = result["assignment"]
-            name = person["name"]
-            st.write(
-                name
-                if person["department"] in name
-                else name + " · " + person["department"]
-            )
-        if result.get("awaiting_confirmation"):
-            st.info("The team reports the work is complete. Is everything working now?")
-            confirmation(result["ticket"], result["work_version"], "receipt_" + key)
-        elif result.get("ticket") and result.get("status") in {"Resolved", "Closed"}:
-            service_rating(
-                result["ticket"],
-                result.get("rating"),
-                "receipt",
-                request("GET", "/me")["language"],
-            )
-        elif result["outcome"] in {"Your request is assigned", "In progress"}:
-            estimate_line(result["completion_estimate"])
-            st.caption("Assigned → In progress → Awaiting your confirmation → Resolved")
-        elif result.get("next_step"):
-            st.write(result["next_step"])
-        with st.container(horizontal=True):
-            if st.button("Close", type="primary", key="receipt_dismiss_" + key):
-                dismiss_receipt()
-                jump("My requests")
-            if result["ticket"] and st.button(
-                "Track request", key="receipt_track_" + key
-            ):
-                dismiss_receipt()
-                jump("My requests", result["ticket"])
+        with body:
+            st.subheader(result["outcome"])
+            receipt_details(result)
+            receipt_progress(result)
+            if result.get("awaiting_confirmation"):
+                st.info("The team reports the work is complete. Is everything working now?")
+                confirmation(result["ticket"], result["work_version"], "receipt_" + key)
+            elif result.get("ticket") and result.get("status") in {"Resolved", "Closed"}:
+                service_rating(
+                    result["ticket"], result.get("rating"), "receipt",
+                    request("GET", "/me")["language"],
+                )
+            elif result["outcome"] in {"Your request is assigned", "In progress"}:
+                estimate_line(result["completion_estimate"])
+            elif result["outcome"] == "Reception is following up":
+                step = result.get("next_step") or ""
+                st.info(
+                    step
+                    if step.startswith("Open this request") or step.endswith("?")
+                    else "Reception will follow up with you. Open the request to see any updates."
+                )
+            elif result["outcome"] == "Reception is coordinating your request":
+                st.info("Reception is finding the right team. You can track updates here.")
+            elif result.get("next_step"):
+                st.write(result["next_step"])
+        if result["ticket"] and track.button(
+            "Track request", type="primary", key="receipt_track_" + key
+        ):
+            dismiss_receipt()
+            jump("My requests", result["ticket"])
+        if close.button(
+            "Close", type="secondary" if result["ticket"] else "primary", key="receipt_dismiss_" + key
+        ):
+            dismiss_receipt()
+            jump("My requests")
         with st.expander("Reference", on_change="rerun") as reference:
             if reference.open:
                 if call:

@@ -6,6 +6,7 @@ import json
 import os
 from uuid import uuid4
 import streamlit as st
+from hotel.ui_copy import words
 from hotel.ui_client import request
 from hotel.issue_labels import problem_label, MISSING
 
@@ -104,7 +105,7 @@ def assistant(ref="", version=None, room="", ticket=None):
             return
     if assistant_profile.get("work_assistant_test_mode"):
         st.caption(
-            "Test mode · local speech recognition and rule-based report interpretation"
+            "Test mode · local speech recognition and rules for interpreting reports"
         )
     form_key = (
         "work_report_" + ref + "_" + st.session_state.get("work_epoch_" + ref, "")
@@ -165,10 +166,15 @@ def notifications(jump, rows=None, profile=None):
 def activity(ref=""):
     rows = request("GET", "/agent-actions", params={"ref": ref})
     if rows:
-        st.dataframe(
-            [{k: r[k] for k in ("created", "agent", "action", "result")} for r in rows],
-            hide_index=True,
-        )
+        st.dataframe([
+            {
+                "Time": row["created"],
+                "Agent": words(row["agent"]),
+                "Action": words(row["action"]),
+                "Result": row["result"],
+            }
+            for row in rows
+        ], hide_index=True)
     else:
         st.caption("No automated actions recorded yet.")
 
@@ -193,7 +199,7 @@ def mark_done(ticket):
 def task_panel(t, me, evidence):
     ref = t["id"]
     w = t["work"]
-    label = problem_label(w["extraction"])
+    label = words(problem_label(w["extraction"]))
     st.subheader(f"Room {t['room']} · {label}")
     st.caption(f"{ref} · {t['urgency']} · {t['status']}")
     if label == MISSING:
@@ -225,13 +231,13 @@ def task_panel(t, me, evidence):
     edit_estimate(t, me)
     if t["analysis"].get("service_mode") == "reception_review":
         st.warning(
-            "Reception follow-up · clarify the issue or permission before arranging physical work."
+            "Reception follow up · clarify the issue or permission before arranging physical work."
         )
         if st.button("Ask guest for details", key="ask_details_" + ref):
             request("POST", f"/tickets/{ref}/ask-details")
             st.success("Sent. The guest can update this same request in My requests.")
         st.caption(
-            "Start work to acknowledge the follow-up. A review cannot be submitted as a completed repair."
+            "Start work to acknowledge the reception review. A review cannot be submitted as a completed repair."
         )
         if st.button("Check service assignment", key="recheck_" + ref):
             result = request(
@@ -304,7 +310,7 @@ def task_panel(t, me, evidence):
 
 def my_work(me, jump, evidence):
     manager = me["role"] == "manager"
-    st.title("All tasks" if manager else "My work")
+    st.title("Task dashboard" if manager else "My work")
     st.caption(
         "Every guest request, across your hotel’s teams."
         if manager
@@ -355,14 +361,25 @@ def task_cards(history, jump):
             else "No assignments waiting. New work will appear here."
         )
         return
-    st.caption(
-        f"{len(rows)} open requests · Ranked by urgency, then oldest first. Open a request to report work."
+    search = st.text_input(
+        "Find a request", key="work_search", placeholder="Room, problem or request ID",
+        max_chars=150,
     )
+    query = search.strip().casefold()
+    if query:
+        rows = [
+            t for t in rows if query in
+            f"{t['room']} {t['id']} {problem_label(t['extraction'])}".casefold()
+        ]
+    if not rows:
+        st.info("No requests match your search.")
+        return
+    st.caption(f"{len(rows)} requests · Ranked by urgency, then oldest first.")
     table = [
         {
             "Rank": t.get("priority_rank"),
             "Room": t["room"],
-            "Main problem": problem_label(t["extraction"]),
+            "Main problem": words(problem_label(t["extraction"])),
             "Priority": t["urgency"],
             "Status": t["status"],
             "Waiting (min)": t.get("waiting_minutes"),
@@ -384,6 +401,7 @@ def task_cards(history, jump):
         table,
         key="ranked_work_table",
         hide_index=True,
+        column_order=["Room", "Action", "Main problem", "Priority", "Status", "Rank", "Waiting (min)", "Assigned to"],
         row_height=52,
         height=min(560, 55 + 52 * len(table)),
         alt="Service queue ranked by urgency and waiting time, with an Open request action for each room",
@@ -391,7 +409,7 @@ def task_cards(history, jump):
             "Rank": st.column_config.NumberColumn(
                 width="small",
                 format="#%d",
-                help="Queue position, not a confidence score. Awaiting-confirmation requests have no active rank.",
+                help="Queue position, not a confidence score. Requests awaiting confirmation have no active rank.",
             ),
             "Room": st.column_config.TextColumn(width="small", pinned=True),
             "Main problem": st.column_config.TextColumn(width="large"),
@@ -402,7 +420,7 @@ def task_cards(history, jump):
     )
     with st.expander("How priority is ranked"):
         st.write(
-            "Critical → Unassessed → Urgent → Moderate → Low. Within each priority, the oldest request comes first. Awaiting-confirmation requests follow active work."
+            "Critical → Unassessed → Urgent → Moderate → Low. Within each priority, the oldest request comes first. Requests awaiting confirmation follow active work."
         )
         st.caption(
             "A short problem label describes the issue; it does not replace the urgency model. Open a request for its evidence and constraints."
@@ -532,8 +550,8 @@ def settings():
                 disabled=bool(row),
             )
             room = st.text_input("Verified room", value=row.get("room", ""))
-            start = st.text_input("Arrival YYYY-MM-DD", value=row.get("starts", ""))
-            end = st.text_input("Departure YYYY-MM-DD", value=row.get("ends", ""))
+            start = st.text_input("Arrival date", value=row.get("starts", ""))
+            end = st.text_input("Departure date", value=row.get("ends", ""))
             if st.form_submit_button("Save reservation"):
                 request(
                     "PUT",

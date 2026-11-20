@@ -1,42 +1,73 @@
 """Public hotel entrance and local demonstration sign-in."""
 
-import streamlit as st
 import hmac
+from contextlib import contextmanager
+
+import streamlit as st
 
 from hotel.demo_accounts import ACCOUNTS as DEMO_ACCOUNTS, GUESTS
+from hotel.vintage_ui import room
 
-BRAND = '<a class="hotel-mark" href="./" target="_self"><img class="wavo-icon" src="app/static/wavo-icon.png" alt=""> Wavo</a>'
+WORDMARK = '<span class="wavo-lockup" aria-hidden="true"><span>avo</span></span>'
+BRAND = f'<a class="hotel-mark" href="./" target="_self" aria-label="Wavo">{WORDMARK}</a>'
+
+ROOM_PHOTOS = (
+    ("suite-lounge.jpg", "Suite lounge overlooking the city"),
+    ("suite-bedroom.webp", "Suite bedroom with a sitting area"),
+    ("guest-bedroom.jpg", "Guest bedroom lit by bedside lamps"),
+)
+RECEPTION_PHOTOS = (
+    ("lobby-lounge.jpg", "Hotel lobby seating around an indoor tree"),
+    ("reception-desk.jpg", "Reception desk beneath a hanging light installation"),
+)
+
+
+def service_card(title, detail, action, href, photos, order):
+    slides = "".join(
+        f'<img src="app/static/guest-gallery/{file}" alt="{alt}" decoding="async" '
+        f'aria-hidden="{str(index != 0).lower()}">'
+        for index, (file, alt) in enumerate(photos)
+    )
+    return f"""<div data-wavo-card data-wavo-reveal="{order}">
+      <a href="{href}" target="_self">
+        <div class="service-gallery" data-service-gallery>{slides}</div>
+        <div class="service-copy"><strong>{title}</strong><span>{detail}</span><b>{action}</b></div>
+      </a>
+    </div>"""
 
 
 def landing():
-    st.html(f"""<header class="public-nav">{BRAND}<nav><a href="#hotel-services">Hotel services</a>
-        <a href="?login=staff" target="_self">Staff entrance</a><a class="nav-login" href="?login=guest" target="_self">Guest sign in ↗</a></nav></header>
-        <section class="arrival">
-          <div class="arrival-intro">
-          <div class="arrival-bear"><img src="app/static/wavo-bear.png" alt="Wavo's brown bear concierge waving hello" fetchpriority="high"></div>
-          <div class="arrival-copy"><p class="hotel-overline">Wavo Concierge</p>
-          <h1>Your stay,<br><em>looked after.</em></h1>
-          <p>Get help with your room, hotel services, or special requests.</p>
-          <a class="gold-link" href="?login=guest" target="_self"><span aria-hidden="true">☎</span> Call AI Reception</a></div></div>
-        </section>
-        <section class="service-shortcuts" id="hotel-services"><p class="hotel-overline">Hotel services</p><h2>How can we help?</h2>
+    with st.container(key="vintage_arrival"):
+        room(entrance="?login=guest")
+    st.html(f"""<section class="service-shortcuts" id="hotel-services">
+          <div data-wavo-reveal="0"><p class="hotel-overline">Hotel services</p><h2>How can we help?</h2></div>
           <div class="shortcut-grid">
-            <a href="?login=guest&amp;service=comfort" target="_self"><span aria-hidden="true">{service_icon("bed")}</span>Room comfort<span aria-hidden="true">→</span></a>
-            <a href="?login=guest&amp;service=housekeeping" target="_self"><span aria-hidden="true">{service_icon("sparkle")}</span>Housekeeping<span aria-hidden="true">→</span></a>
-            <a href="?login=guest&amp;service=wifi" target="_self"><span aria-hidden="true">{service_icon("wifi")}</span>Wi-Fi help<span aria-hidden="true">→</span></a>
-            <a href="?login=guest&amp;service=special" target="_self"><span aria-hidden="true">{service_icon("bell")}</span>Special requests<span aria-hidden="true">→</span></a>
+            <div data-wavo-card data-wavo-reveal="1"><a href="?login=guest&amp;service=comfort" target="_self">{service_icon("bed")}<span>Room comfort</span></a></div>
+            <div data-wavo-card data-wavo-reveal="2"><a href="?login=guest&amp;service=housekeeping" target="_self">{service_icon("sparkle")}<span>Housekeeping</span></a></div>
+            <div data-wavo-card data-wavo-reveal="3"><a href="?login=guest&amp;service=wifi" target="_self">{service_icon("wifi")}<span>WiFi help</span></a></div>
+            <div data-wavo-card data-wavo-reveal="4"><a href="?login=guest&amp;service=special" target="_self">{service_icon("bell")}<span>Special requests</span></a></div>
           </div></section>
-        <section class="hotel-services"><div class="section-head"><div><p class="hotel-overline">Hotel services</p><h2>During your stay</h2></div><a class="nav-login" href="?login=guest" target="_self">Guest sign in ↗</a></div>
+        <section class="hotel-services"><div class="section-head" data-wavo-reveal="0"><div><p class="hotel-overline">Hotel services</p><h2>During your stay</h2></div></div>
         <div class="service-images">
-          <a href="?login=guest&amp;service=comfort" target="_self"><img src="app/static/room-detail.jpg" alt="Guest room with a wood-panelled headboard" loading="lazy" decoding="async"><div><strong>In-room service</strong><span>Repairs and housekeeping</span><b>Request room service ↗</b></div></a>
-          <a href="?login=guest" target="_self"><img src="app/static/reception.jpg" alt="Seating and warm lights in the hotel lobby" loading="lazy" decoding="async"><div><strong>Reception</strong><span>Hotel information and guest support</span><b>Contact reception ↗</b></div></a>
+          {service_card("Room service", "Repairs and housekeeping", "Request room service", "?login=guest&amp;service=comfort", ROOM_PHOTOS, 1)}
+          {service_card("Reception", "Hotel information and guest support", "Contact reception", "?login=guest", RECEPTION_PHOTOS, 2)}
         </div></section>
-        <footer class="hotel-footer"><span>Wavo</span><a href="?login=staff" target="_self">Staff sign in ↗</a></footer>""")
+        <footer class="hotel-footer" data-wavo-reveal="0">
+          {BRAND}
+          <nav aria-label="Footer navigation">
+            <a href="#hotel-services">Hotel services</a>
+            <a href="?login=guest" target="_self">Guest sign in</a>
+            <a href="?login=staff" target="_self">Staff entrance</a>
+          </nav>
+        </footer>""")
     st.stop()
 
 
 def service_icon(name):
-    return f'<img src="app/static/service-{name}.svg" alt="" width="37" height="37">'
+    return (
+        f'<span class="service-icon" aria-hidden="true" '
+        f'style="--service-icon:url(app/static/service-{name}.svg)"></span>'
+    )
 
 
 def fill_demo_account(role):
@@ -50,26 +81,29 @@ def fill_demo_account(role):
     st.session_state["demo_password_" + role] = password
 
 
+@contextmanager
+def login_card(role):
+    guest = role == "guest"
+    who, other = ("Guest", "staff") if guest else ("Staff", "guest")
+    with st.container(key="hotel_login", border=True):
+        st.html(
+            f'<header class="login-banner" data-entrance="{role}">{BRAND}'
+            f'<h1>{who} sign in</h1><p>Sign in to your hotel workspace.</p></header>'
+        )
+        with st.container(key="login_fields"):
+            yield
+            st.html(
+                '<nav class="login-links" aria-label="Hotel entrances">'
+                '<a href="./" target="_self">Back to hotel</a>'
+                f'<a href="?login={other}" target="_self">{other.title()} entrance</a>'
+                '</nav>'
+            )
+
+
 def demo_login(role):
     guest = role == "guest"
-    who = "Guest" if guest else "Staff"
-    st.html(
-        f'<header class="public-nav">{BRAND}<a href="./" target="_self">Back to hotel</a></header>'
-    )
-    left, right = st.columns([1, 1], gap="large", vertical_alignment="center")
-    with left:
-        img = "guest-suite" if guest else "reception"
-        st.html(
-            f'<img class="login-photo" src="app/static/{img}.jpg" alt="Hotel interior" loading="lazy" decoding="async">'
-        )
-    with right:
+    with login_card(role):
         st.caption("LOCAL DEMO")
-        st.title(who + " sign in")
-        st.write(
-            "Sign in to get help for the room linked to your reservation."
-            if guest
-            else "View assigned work or sign in as a supervisor."
-        )
         if guest:
             from hotel import store
 
@@ -101,7 +135,7 @@ def demo_login(role):
             args=(role,),
             icon=":material/person:",
         )
-        with st.form("demo_login_" + role):
+        with st.form("demo_login_" + role, border=False):
             email = st.text_input(
                 "Email", key="demo_email_" + role, autocomplete="username"
             )
@@ -139,8 +173,4 @@ def demo_login(role):
             st.write("Email · " + account_email)
             st.write("Password · " + account_password)
             st.caption("Local demonstration account")
-        other = "staff" if guest else "guest"
-        st.html(
-            f'<a class="other-entrance" href="?login={other}" target="_self">{other.title()} entrance ↗</a>'
-        )
     st.stop()

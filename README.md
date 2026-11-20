@@ -49,7 +49,7 @@ For a two-tab presentation, the seeded backup worker is visible to the superviso
 
 ## Calls and structured notes
 
-Guests select **Call AI Reception**, enable their microphone, speak and pause. **Test mode** uses Whisper, translation, the shared NLP engine, approved hotel responses and synthetic speech. The focused bear screen supports mute, replay, typed replies and immediate hang-up. Background inference cannot dispatch work after the call ends.
+Guests press the antique phone in Reception or select **Call AI Reception**, enable their microphone, speak and pause. **Test mode** uses Whisper, translation, the shared NLP engine, approved hotel responses and synthetic speech. The brass concierge call screen supports mute, replay, typed replies and immediate hang-up. Background inference cannot dispatch work after the call ends.
 
 Demonstrate Wi-Fi guidance followed by “Yes, I am online.” It saves a resolved call note without a work ticket. Demonstrate AC repair followed by consent to send Maintenance. The task appears during the call. Service estimates and ready rooms come from Hotel availability; room moves require front-desk approval.
 
@@ -151,7 +151,9 @@ $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='1'
 
 Local speech uses `Systran/faster-whisper-small`. Translation uses the int8 conversion of Meta NLLB-200 distilled 600M, licensed CC BY-NC 4.0 for this academic demonstration. The app uses scikit-learn classifiers, not DistilBERT. Earlier encoder experiments remain archived under `research/archive`; they are not deployed or loaded by the app.
 
-VADER lexicon attribution is in `artifacts/VADER_NOTICE.md`. Wavo retains its generated bronze bell logo and brown bear concierge. Pexels photography is credited to Faheem Ahamad (photo 40624417), Roshan Patel (20653866), and Musa Ortaç (31080809).
+VADER lexicon attribution is in `artifacts/VADER_NOTICE.md`. The vintage room and brass concierge use the supplied artwork. Pexels photography is credited to Faheem Ahamad (photo 40624417), Roshan Patel (20653866), and Musa Ortaç (31080809).
+
+The room's browser component lives in `frontend/vintage-room`. Its checked-in build is loaded by Streamlit. After editing the component, run `pnpm install --frozen-lockfile` and `pnpm run build` from that directory, then commit the updated `hotel/vintage_build` assets.
 
 ## Autonomous service operations
 

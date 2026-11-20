@@ -1,6 +1,7 @@
 """Hotel-wide assignment overview using the existing authorized ticket queue."""
 
 import streamlit as st
+from hotel.ui_copy import words
 
 from hotel.issue_labels import problem_label
 from hotel.procedures import CATEGORIES, DEPARTMENTS
@@ -53,7 +54,7 @@ def filtered(
             and t["status"] != status
         ):
             continue
-        if query and query not in f"{t['room']} {t['id']}".casefold():
+        if query and query not in f"{t['room']} {t['id']} {problem_label(t.get('extraction') or {})}".casefold():
             continue
         result.append(t)
     # Keep the backend's hotel-wide ranks; filtering never renumbers priority.
@@ -86,7 +87,7 @@ def table_row(t):
     return {
         "Rank": None if closed or awaiting(t) else t.get("priority_rank"),
         "Room": t["room"] or "Unlinked",
-        "Main problem": problem_label(t.get("extraction") or {}),
+        "Main problem": words(problem_label(t.get("extraction") or {})),
         "Department": t["department"],
         "Assigned staff": (t.get("assignment") or {}).get("name") or "Unassigned",
         "Status": "Awaiting confirmation · Escalated"
@@ -116,11 +117,13 @@ def overview(jump):
         jump("My work", ref)
         return
     rows = request("GET", "/tickets")
-    st.caption("Hotel-wide totals · All departments · Unresolved requests")
-    with st.container(horizontal=True):
+    st.subheader("Current workload")
+    st.caption("Open requests across all departments.")
+    with st.container(horizontal=True, key="dashboard_summary"):
         for label, value in counts(rows).items():
             st.metric(label, value, border=True)
 
+    st.subheader("Find and open a task")
     saved = st.session_state.get("admin_filters", {})
     names = dict(st.session_state.get("admin_staff_names", {}))
     names.update(
@@ -131,29 +134,6 @@ def overview(jump):
         }
     )
     st.session_state.admin_staff_names = names
-    with st.container(horizontal=True):
-        department = select(
-            "Department",
-            ["All", *sorted(set(DEPARTMENTS) | {t["department"] for t in rows})],
-            saved,
-            "department",
-        )
-        staff = select(
-            "Assigned staff",
-            ["All", "Unassigned", *sorted(names, key=lambda uid: (names[uid], uid))],
-            saved,
-            "staff",
-            format_func=lambda uid: names.get(uid, uid),
-        )
-        category = select(
-            "Problem category",
-            [
-                "All",
-                *sorted(set(CATEGORIES) | {c for t in rows for c in categories(t)}),
-            ],
-            saved,
-            "category",
-        )
     with st.container(horizontal=True):
         status = select(
             "Status",
@@ -170,12 +150,36 @@ def overview(jump):
             "status",
         )
         search = st.text_input(
-            "Room or request ID",
+            "Find a request",
             value=saved.get("search", ""),
             key="admin_search",
             max_chars=150,
-            placeholder="Search room or request ID",
+            placeholder="Room, problem or request ID",
         )
+    with st.expander("More filters"):
+        with st.container(horizontal=True):
+            department = select(
+                "Department",
+                ["All", *sorted(set(DEPARTMENTS) | {t["department"] for t in rows})],
+                saved,
+                "department",
+            )
+            staff = select(
+                "Assigned staff",
+                ["All", "Unassigned", *sorted(names, key=lambda uid: (names[uid], uid))],
+                saved,
+                "staff",
+                format_func=lambda uid: names.get(uid, uid),
+            )
+            category = select(
+                "Problem category",
+                [
+                    "All",
+                    *sorted(set(CATEGORIES) | {c for t in rows for c in categories(t)}),
+                ],
+                saved,
+                "category",
+            )
     filters = dict(
         department=department,
         staff=staff,
@@ -186,7 +190,7 @@ def overview(jump):
     st.session_state.admin_filters = filters
     shown = filtered(rows, **filters)
     st.caption(
-        f"{len(shown)} matching tasks · Hotel-wide ranks retained · Updates every 10 seconds"
+        f"{len(shown)} matching tasks · Original queue ranks kept · Updates every 10 seconds"
     )
     if not shown:
         st.info("No tasks match these filters.")
@@ -205,13 +209,13 @@ def overview(jump):
         row_height=52,
         height=min(560, 56 + 52 * len(shown)),
         column_order=[
-            "Rank",
             "Room",
+            "Action",
             "Main problem",
+            "Rank",
             "Department",
             "Assigned staff",
             "Status",
-            "Action",
             "Priority",
             "Waiting (min)",
             "Expected completion",
@@ -220,7 +224,7 @@ def overview(jump):
             "Rank": st.column_config.NumberColumn(
                 format="#%d",
                 width="small",
-                help="Hotel-wide queue position; filtering does not renumber tasks.",
+                help="Position in the hotel queue. Filtering does not renumber tasks.",
             ),
             "Room": st.column_config.TextColumn(width="small", pinned=True),
             "Main problem": st.column_config.TextColumn(width="medium"),

@@ -19,6 +19,10 @@ st.set_page_config(
 )
 st.html(ROOT / "hotel/ui.css")
 st.html(ROOT / "hotel/hotel.css")
+st.html(ROOT / "hotel/vintage.css")
+from hotel.vintage_ui import guest_concierge, room as vintage_room, workspace_effects
+
+workspace_effects()
 loading_slot = st.empty()
 LOADING_MARKUP = '<div class="wavo-loading" role="status" aria-live="polite"><div class="wavo-loading-card"><span class="wavo-loading-bell" aria-hidden="true"></span><span>Wavo is getting things ready…</span></div></div>'
 from dotenv import load_dotenv
@@ -53,92 +57,90 @@ def sign_in():
         st.query_params.get("login") or st.query_params.get("workspace") or "guest"
     )
     demo = os.getenv("WAVO_DEMO_LOGIN", "false").lower() == "true"
-    st.html(
-        f'<header class="public-nav">{welcome.BRAND}<a href="./" target="_self">Back to hotel</a></header>'
-    )
-    hero(
-        ("Guest" if entrance == "guest" else "Staff") + " <em>sign in</em>",
-        "Sign in to your hotel workspace.",
-    )
-    if demo:
-        st.caption("Hosted demo · signs in through Supabase Auth")
-        options = (
-            list(welcome.GUESTS)
-            if entrance == "guest"
-            else ["staff", "backup", "reception", "housekeeping", "supervisor"]
-        )
-        st.selectbox(
-            "Demo account",
-            options,
-            format_func=lambda key: welcome.DEMO_ACCOUNTS[key][0],
-            key="guest_demo_kind" if entrance == "guest" else "staff_demo_kind",
-        )
-        st.button(
-            "Use demo account", on_click=welcome.fill_demo_account, args=(entrance,)
-        )
-    with st.form("sign-in"):
-        email = st.text_input("Email", key="demo_email_" + entrance)
-        password = st.text_input(
-            "Password", type="password", key="demo_password_" + entrance
-        )
-        if st.form_submit_button("Sign in", type="primary"):
-            loading_slot.html(LOADING_MARKUP)
-            started = perf_counter()
-            S.login_timings = {}
-            try:
-                r = http_request(
-                    "POST",
-                    os.environ["SUPABASE_URL"].rstrip("/") + "/auth/v1/token",
-                    params={"grant_type": "password"},
-                    headers={"apikey": os.environ["SUPABASE_PUBLISHABLE_KEY"]},
-                    json={"email": email, "password": password},
-                    timeout=10,
-                )
-                S.login_timings["authentication_seconds"] = perf_counter() - started
-                if r.ok:
-                    session = r.json()
-                    profile_started = perf_counter()
-                    profile = http_request(
-                        "GET",
-                        os.environ["HOTEL_API_URL"].rstrip("/") + "/workspace/updates",
-                        headers={"Authorization": "Bearer " + session["access_token"]},
-                        timeout=15,
+    with welcome.login_card(entrance):
+        if demo:
+            st.caption("Hosted demo · signs in through Supabase Auth")
+            options = (
+                list(welcome.GUESTS)
+                if entrance == "guest"
+                else ["staff", "backup", "reception", "housekeeping", "supervisor"]
+            )
+            st.selectbox(
+                "Demo account",
+                options,
+                format_func=lambda key: welcome.DEMO_ACCOUNTS[key][0],
+                key="guest_demo_kind" if entrance == "guest" else "staff_demo_kind",
+            )
+            st.button(
+                "Use demo account", on_click=welcome.fill_demo_account, args=(entrance,)
+            )
+        with st.form("sign-in", border=False):
+            email = st.text_input(
+                "Email", key="demo_email_" + entrance, autocomplete="username"
+            )
+            password = st.text_input(
+                "Password",
+                type="password",
+                key="demo_password_" + entrance,
+                autocomplete="current-password",
+            )
+            if st.form_submit_button("Sign in", type="primary", width="stretch"):
+                loading_slot.html(LOADING_MARKUP)
+                started = perf_counter()
+                S.login_timings = {}
+                try:
+                    r = http_request(
+                        "POST",
+                        os.environ["SUPABASE_URL"].rstrip("/") + "/auth/v1/token",
+                        params={"grant_type": "password"},
+                        headers={"apikey": os.environ["SUPABASE_PUBLISHABLE_KEY"]},
+                        json={"email": email, "password": password},
+                        timeout=10,
                     )
-                    S.login_timings["workspace_seconds"] = (
-                        perf_counter() - profile_started
-                    )
-                    if profile.ok:
-                        updates = profile.json()
-                        role = updates["profile"]["role"]
-                        if (role == "guest") == (entrance == "guest"):
-                            S.auth = session
-                            S.login_render_started = perf_counter()
-                            from hotel.ui_client import remember
+                    S.login_timings["authentication_seconds"] = perf_counter() - started
+                    if r.ok:
+                        session = r.json()
+                        profile_started = perf_counter()
+                        profile = http_request(
+                            "GET",
+                            os.environ["HOTEL_API_URL"].rstrip("/") + "/workspace/updates",
+                            headers={"Authorization": "Bearer " + session["access_token"]},
+                            timeout=15,
+                        )
+                        S.login_timings["workspace_seconds"] = (
+                            perf_counter() - profile_started
+                        )
+                        if profile.ok:
+                            updates = profile.json()
+                            role = updates["profile"]["role"]
+                            if (role == "guest") == (entrance == "guest"):
+                                S.auth = session
+                                S.login_render_started = perf_counter()
+                                from hotel.ui_client import remember
 
-                            # This authenticated response already contains /me
-                            # and the inbox needed by the first workspace render.
-                            remember("/me", updates["profile"])
-                            remember("/workspace/updates", updates)
-                            st.query_params.clear()
-                            st.rerun()
-                        st.error(
-                            "Use the guest entrance for guest accounts and the staff entrance for staff accounts."
-                        )
+                                # This authenticated response already contains /me
+                                # and the inbox needed by the first workspace render.
+                                remember("/me", updates["profile"])
+                                remember("/workspace/updates", updates)
+                                st.query_params.clear()
+                                st.rerun()
+                            st.error(
+                                "Use the guest entrance for guest accounts and the staff entrance for staff accounts."
+                            )
+                        else:
+                            st.error(
+                                "Your account needs a hotel profile before signing in."
+                            )
                     else:
-                        st.error(
-                            "Your account needs a hotel profile before signing in."
-                        )
+                        st.error("Check your sign in details.")
+                except requests.Timeout:
+                    st.error("Signing in took too long. Please try again.")
+                except requests.RequestException:
+                    st.error("The sign in service is unavailable. Please try again.")
+                except (KeyError, ValueError):
+                    st.error("The sign in service needs configuration.")
+                finally:
                     loading_slot.empty()
-                    st.stop()
-                st.error("Check your sign-in details.")
-            except requests.Timeout:
-                st.error("Sign-in took too long. Please try again.")
-            except requests.RequestException:
-                st.error("The sign-in service is unavailable. Please try again.")
-            except (KeyError, ValueError):
-                st.error("The sign-in service needs configuration.")
-            finally:
-                loading_slot.empty()
     st.stop()
 
 
@@ -187,7 +189,7 @@ def evidence(a):
             st.json(a.get("intent", {}))
         elif stage == "Entities":
             st.caption(
-                "Rule-extracted references; the reservation determines the service room"
+                "Room references found by rules. The reservation determines the service room."
             )
             st.json(a.get("extraction", {}))
         elif stage == "Context":
@@ -236,12 +238,12 @@ def evidence(a):
                 f"{len(v['features'])} matched features out of {v['vocabulary']:,} in the fitted vocabulary."
             )
             rows = [
-                {"Term": f["term"], "TF-IDF weight": round(f["weight"], 5)}
+                {"Term": f["term"], "TF IDF weight": round(f["weight"], 5)}
                 for f in sorted(v["features"], key=lambda f: -f["weight"])
             ]
         else:
             st.caption(
-                f"Each contribution is TF-IDF × class coefficient. Add the intercept ({v['bias']:.3f}) to recover the class score."
+                f"Each contribution is TF IDF × class coefficient. Add the intercept ({v['bias']:.3f}) to recover the class score."
             )
             rows = [
                 {"Term": f["term"], "Contribution": round(f["contribution"], 5)}
@@ -254,6 +256,8 @@ def evidence(a):
 
 
 def evaluation():
+    from hotel import studio
+
     studio.evaluation()
 
 
@@ -266,11 +270,12 @@ def reset_example():
 
 
 def intelligence():
+    from hotel import studio
     from hotel.nlp import EXAMPLE
 
     hero(
-        "NLP <em>Studio</em>",
-        "Trace a guest complaint from its first words to the right hotel team.",
+        "Complaint analysis",
+        "See how Wavo identifies the problem, estimates urgency, and picks a hotel team.",
     )
     if S.get("call_evidence"):
         case = S.call_evidence
@@ -450,7 +455,7 @@ def service_context(t):
     cols[1].caption("Assigned team")
     cols[1].write("**" + t["department"] + "**")
     st.caption(
-        "Reservation linked" if t["guest"] else "Staff-entered room or public feedback"
+        "Reservation linked" if t["guest"] else "Room or public feedback entered by staff"
     )
     st.subheader("NLP extraction")
     st.write("**" + ex["topic"] + "**")
@@ -543,7 +548,7 @@ def ticket_view(guest):
         with st.form("clarify_" + ref):
             detail = st.text_area(
                 "What still needs help?",
-                placeholder="Describe the problem and any room access or quiet-service preferences.",
+                placeholder="Describe the problem and any room access or quiet service preferences.",
             )
             agreement = st.checkbox(
                 "Please arrange service for this issue", value=False
@@ -615,7 +620,7 @@ def ticket_view(guest):
                     f"/calls/{call['id']}/utterance",
                     params={"include_audio": False},
                 )["reply"]
-            st.info(reply)
+            st.info(reply.replace("same-category room", "room in the same category"))
             if (
                 call["outcome"] == "ETA changed"
                 and "same-category room is ready" in call["reply"]
@@ -649,6 +654,8 @@ def guest_confirmation_notice(pending):
 
 @st.fragment(run_every="3s" if S.get("call_key") or S.get("active_call") else "15s")
 def phone_panel():
+    from hotel.phone import PHONE
+
     calls = request("GET", "/calls", params={"active_only": True})
     pending = [
         c for c in calls if c["status"] in {"Ringing", "Connecting", "Connected"}
@@ -732,7 +739,7 @@ def phone_panel():
                     "muted": tr("Microphone muted"),
                     "mute": tr("Mute microphone"),
                     "unmute": tr("Unmute microphone"),
-                    "mascot": tr("Your bear concierge"),
+                    "mascot": tr("Your Wavo concierge"),
                     "end": tr("End call"),
                 },
                 key="live_" + c["id"],
@@ -747,6 +754,9 @@ def phone_panel():
 
 
 def local_conversation(key):
+    from hotel import desk
+    from hotel.phone import LOCAL_PHONE
+
     st.caption("Test mode · local speech recognition and approved response rules")
     from hotel.concierge import GREETINGS
 
@@ -862,20 +872,18 @@ def begin_call():
     )
     if call["engine"] == "live":
         S.audio = request("POST", f"/calls/{key}/join")
-    S.call_key = key
-    jump("Calls")
+    S.call_key = S.active_call = key
+    jump("Reception")
 
 
 def guest_home():
     if not browser_voice:
         with st.container(key="guest_welcome", border=True):
-            bear, action = st.columns(
+            mascot, action = st.columns(
                 [1, 1.3], vertical_alignment="center", gap="large"
             )
-            with bear:
-                st.html(
-                    '<div class="guest-bear"><img src="app/static/wavo-bear.png" alt="Your brown bear concierge waving hello"></div>'
-                )
+            with mascot:
+                guest_concierge()
             with action:
                 st.caption(tr("Room") + " " + me["room"])
                 st.title(tr("AI reception"))
@@ -899,7 +907,7 @@ def guest_home():
         S.guest_text = {
             "comfort": "I need help with my room: ",
             "housekeeping": "I need housekeeping help: ",
-            "wifi": "I need help connecting to Wi-Fi: ",
+            "wifi": "I need help connecting to WiFi: ",
             "special": "I have a special request: ",
         }[pending_service]
         S.service_form_open = True
@@ -953,7 +961,7 @@ def calls_page():
         tr("Calls"),
         tr("Room") + " " + me["room"]
         if guest
-        else "Call records, guest follow-ups and live handovers.",
+        else "Find call records, follow up with guests, and manage live handovers.",
     )
     if not guest:
         from hotel.call_workspace import staff_calls
@@ -1056,8 +1064,7 @@ if (mode == "preview" and "preview_actor" not in S) or (
     sign_in()
 
 from hotel.ui_client import request
-from hotel.phone import PHONE, LOCAL_PHONE
-from hotel import desk, studio, workspace
+from hotel import workspace
 from hotel.guest_copy import label
 from hotel.languages import NAMES
 
@@ -1065,7 +1072,7 @@ with st.container(key="masthead"):
     brand, account = st.columns([3, 1])
 with brand:
     st.html(
-        '<a class="brand" href="?home=1" target="_self"><img class="wavo-icon" src="app/static/wavo-icon.png" alt="">Wavo<small>Hotel operations</small></a>'
+        f'<a class="brand" href="?home=1" target="_self" aria-label="Wavo">{welcome.WORDMARK}<small>Hotel operations</small></a>'
     )
 me = request("GET", "/me")
 guest = me["role"] == "guest"
@@ -1097,9 +1104,6 @@ def account_controls():
                 + " · "
                 + ("Available" if details["roster"]["available"] else "Unavailable")
             )
-        if me["role"] == "manager" and st.button("Hotel settings"):
-            S.settings_open = True
-            st.rerun()
         if me["mode"] == "Local preview":
             if st.button("Switch to staff" if guest else "Switch to guest"):
                 if guest and S.get("active_call"):
@@ -1138,6 +1142,7 @@ pages = (
         "Calls",
         "NLP Studio",
         "Insights",
+        *(["Hotel settings"] if me["role"] == "manager" else []),
     ]
 )
 if "destination" in S:
@@ -1155,20 +1160,37 @@ if "destination" in S:
         S.nav = "All tasks"
     elif me["role"] == "staff" and S.nav == "All tasks":
         S.nav = "My work"
-elif S.get("nav") not in pages:
+if S.get("nav") not in pages:
     S.nav = pages[0]
-page = (
-    st.segmented_control(
-        "Navigation",
+staff_navigation = {
+    "All tasks": "Task dashboard",
+    "My work": "My work",
+    "Calls": "Guest calls",
+    "NLP Studio": "Complaint analysis",
+    "Insights": "Analytics",
+    "Hotel settings": "Hotel settings",
+}
+with st.container(key="workspace_nav"):
+    page = st.segmented_control(
+        "Workspace navigation",
         pages,
         key="nav",
-        format_func=tr,
+        format_func=(
+            (lambda item: tr("AI reception" if item == "Reception" else item))
+            if guest else staff_navigation.get
+        ),
         label_visibility="collapsed",
+        width="stretch",
+        wrap=True,
         on_change=lambda: S.pop("selected_ticket", None),
-    )
-    or pages[0]
+    ) or pages[0]
+
+show_concierge = guest and page == "Reception" and not any(
+    S.get(key) for key in ("active_call", "call_key", "completed_call", "request_receipt")
 )
 if browser_voice:
+    from hotel.phone import PHONE
+
     # This component stays at one fixed position/key on every guest page.
     # Its browser owns permission, startup and media; no rerun between clicks.
     live_result = PHONE(
@@ -1178,9 +1200,8 @@ if browser_voice:
             ).rstrip("/"),
             "accessToken": S.auth["access_token"],
             "room": me["room"],
-            "visible": page == "Reception"
-            and not S.get("active_call")
-            and not S.get("completed_call"),
+            "visible": show_concierge,
+            "focusLauncher": S.pop("vintage_focus_call", False),
             "dismissedCall": S.get("dismissed_call"),
             "retryFinalization": S.get("retry_finalization"),
         },
@@ -1219,16 +1240,11 @@ if guest and (
         call=bool(S.get("finalizing_call") or S.get("completed_call")),
     )
 inbox_slot = st.container()
-if me["role"] == "manager" and S.get("settings_open"):
-    if st.button("Back to workspace"):
-        S.settings_open = False
-        st.rerun()
-    more()
-    loading_slot.empty()
-    st.stop()
 if page == "NLP Studio":
     intelligence()
 elif page == "Insights":
+    from hotel import studio
+
     studio.insights(jump)
     with st.expander("Verified agent activity", on_change="rerun") as audit_panel:
         if audit_panel.open:
@@ -1237,6 +1253,14 @@ elif page == "Calls":
     calls_page()
 elif page == "Reception":
     home_progress_slot = guest_home()
+    if show_concierge and st.toggle("Show the vintage reception", key="show_guest_lobby"):
+        with st.container(key="guest_lobby", border=True):
+            scene = vintage_room()
+            if scene.telephone:
+                if browser_voice:
+                    S.vintage_focus_call = True
+                    st.rerun()
+                begin_call()
 elif page in {"All tasks", "My work"} and S.get("selected_ticket"):
     workspace.my_work(me, jump, evidence)
 elif page in {"All tasks", "My work"}:
