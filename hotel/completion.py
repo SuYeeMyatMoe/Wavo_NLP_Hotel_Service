@@ -82,12 +82,14 @@ def display(row, active=True, at=None):
     return result
 
 
+ACTIVE_ESTIMATE = (
+    "SELECT e.* FROM completion_estimates e JOIN task_assignments a ON a.id=e.assignment "
+    "WHERE e.ticket=? AND a.active=1"
+)
+
+
 def for_ticket(db, ref):
-    row = db.one(
-        "SELECT e.* FROM completion_estimates e JOIN task_assignments a ON a.id=e.assignment WHERE e.ticket=? AND a.active=1",
-        (ref,),
-    )
-    return display(row)
+    return display(db.one(ACTIVE_ESTIMATE, (ref,)))
 
 
 def monitor(db, at):

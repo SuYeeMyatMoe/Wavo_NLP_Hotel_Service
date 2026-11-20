@@ -287,7 +287,11 @@ def alerts(ctx=Depends(context)):
 def detail(ref: str, ctx=Depends(context), prepare_recorder: bool = False):
     db, p = ctx
     t = s.ticket(db, p, ref)
-    from hotel.work_orders import context as work_context, guest_rating
+    if p["role"] == "guest":
+        from hotel.guest_activity import request_detail
+
+        return request_detail(db, p, t)
+    from hotel.work_orders import context as work_context
 
     t["work"] = work_context(db, p, t, include_outcomes=not prepare_recorder)
     if (
@@ -308,57 +312,6 @@ def detail(ref: str, ctx=Depends(context), prepare_recorder: bool = False):
     t["events"] = db.all(
         "SELECT action,created FROM events WHERE ticket=? ORDER BY created,id", (ref,)
     )
-    if p["role"] not in s.STAFF:
-        t["events"] = [
-            e
-            for e in t["events"]
-            if e["action"]
-            in {
-                "Request received",
-                "In progress",
-                "Resolved",
-                "Closed",
-                "Awaiting confirmation",
-                "Guest confirmed completion",
-                "Guest requested more help",
-                "Assigned",
-                "Reopened",
-                "Guest clarified request",
-                "Completion estimate updated",
-                "Pending assignment",
-                "Escalated",
-            }
-            or e["action"].startswith(("Assigned to ", "Guest feedback:"))
-        ]
-        t["rating"] = (
-            guest_rating(db, ref) if t["status"] in {"Resolved", "Closed"} else None
-        )
-        t["call_updates"] = db.all(
-            "SELECT c.id,n.outcome,n.reply,n.language FROM calls c JOIN call_notes n ON n.id=c.id "
-            "WHERE c.ticket=? AND c.hotel=? AND c.guest=? AND n.outcome IN "
-            "('ETA changed','Room approval needed','Move approved','Move declined') ORDER BY c.created DESC",
-            (ref, p["hotel"], p["id"]),
-        )
-        return {
-            k: t[k]
-            for k in (
-                "id",
-                "room",
-                "complaint",
-                "status",
-                "department",
-                "created",
-                "events",
-                "source",
-                "work",
-                "lifecycle",
-                "assignment",
-                "awaiting_confirmation",
-                "completion_estimate",
-                "rating",
-                "call_updates",
-            )
-        }
     t["analysis"] = json.loads(t["analysis"])
     t["calls"] = db.all(
         "SELECT id,direction,status,transcript,created FROM calls WHERE ticket=? ORDER BY created",

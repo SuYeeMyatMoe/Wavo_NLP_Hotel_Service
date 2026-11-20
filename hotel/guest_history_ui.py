@@ -19,9 +19,12 @@ def staff_label(assignment):
 
 
 @st.fragment(run_every="15s")
-def history(jump):
-    if st.session_state.get("destination") in {"Reception", "My requests"}:
+def history(show_request):
+    if st.session_state.get("destination") == "Reception":
         st.rerun()
+    if st.session_state.get("selected_ticket"):
+        show_request()
+        return
     st.title("My requests")
     st.caption(
         "Your calls and requests, together. Follow progress and confirm when everything is fixed."
@@ -82,7 +85,6 @@ def history(jump):
             row = rows[action["row"]]
             if row["ticket"]:
                 st.session_state.selected_ticket = row["ticket"]
-                st.session_state.destination = "My requests"
             else:
                 st.session_state.completed_call = row["id"]
                 st.session_state.destination = "Reception"
@@ -110,10 +112,7 @@ def history(jump):
                 "Expected completion": estimate_text(r["completion_estimate"])
                 if r["state"] == "Open" and r["ticket"]
                 else "—",
-                "Action": "Selected"
-                if r["ticket"]
-                and r["ticket"] == st.session_state.get("selected_ticket")
-                else "Open",
+                "Action": "Open",
             }
             for r in rows
         ],

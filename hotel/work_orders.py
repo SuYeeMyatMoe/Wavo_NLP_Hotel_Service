@@ -8,7 +8,11 @@ PRIORITY = {"Critical": 0, "Unassessed": 1, "Urgent": 2, "Moderate": 3, "Low": 4
 
 
 def current(db, ref):
-    return db.one("SELECT * FROM ticket_work WHERE ticket=?", (ref,)) or {
+    return db.one("SELECT * FROM ticket_work WHERE ticket=?", (ref,)) or empty_work(ref)
+
+
+def empty_work(ref):
+    return {
         "ticket": ref,
         "owner": "",
         "version": 0,
@@ -23,14 +27,14 @@ def locked(db, p, ref):
     query = "SELECT t.* FROM tickets t WHERE t.id=? AND t.hotel=?"
     args = [ref, p["hotel"]]
     if p["role"] == "staff":
-        query += " AND EXISTS(SELECT 1 FROM ticket_work w WHERE w.ticket=t.id AND w.owner=?)"
+        query += (
+            " AND EXISTS(SELECT 1 FROM ticket_work w WHERE w.ticket=t.id AND w.owner=?)"
+        )
         args.append(p["id"])
     elif p["role"] not in store.STAFF:
         query += " AND t.guest=?"
         args.append(p["id"])
-    ticket = db.one(
-        query + (" FOR UPDATE OF t" if db.pg else ""), args
-    )
+    ticket = db.one(query + (" FOR UPDATE OF t" if db.pg else ""), args)
     if not ticket:
         raise PermissionError("Request unavailable.")
     return ticket
@@ -135,24 +139,27 @@ def submit(db, p, ref, key, version, outcome, action, note):
 
 def confirm(db, p, ref, version, resolved, note=""):
     t = locked(db, p, ref)
-    w = current(db, ref)
     guest = p["role"] == "guest" and t["guest"] == p["id"]
     manager = p["role"] == "manager" and not t["guest"]
     if not (guest or manager):
         raise PermissionError("The linked guest confirms this request.")
-    from hotel.operations import snapshot
+    from hotel import operations
+
+    work = db.one(
+        "SELECT COALESCE(w.version,0) AS version,w.outcome,l.state,l.reason,a.staff "
+        "FROM tickets t LEFT JOIN ticket_work w ON w.ticket=t.id "
+        "LEFT JOIN service_lifecycle l ON l.ticket=t.id "
+        "LEFT JOIN task_assignments a ON a.ticket=t.id AND a.active=1 WHERE t.id=?",
+        (ref,),
+    )
 
     pending = t["status"] == "Awaiting confirmation" or (
-        w["outcome"] == "Fixed" and snapshot(db, ref)["awaiting_confirmation"]
+        work["outcome"] == "Fixed" and operations.awaiting_confirmation(work)
     )
-    if not pending or w["version"] != version:
+    if not pending or work["version"] != version:
         raise ValueError("This outcome changed. Refresh before confirming.")
     if manager and not note.strip():
         raise ValueError("Record how completion was verified.")
-    db.run(
-        "UPDATE ticket_work SET version=version+1,updated=? WHERE ticket=?",
-        (store.now(), ref),
-    )
     label = (
         ("Guest confirmed completion" if resolved else "Guest requested more help")
         if guest
@@ -162,45 +169,51 @@ def confirm(db, p, ref, version, resolved, note=""):
             else "Manager requested further work"
         )
     )
-    store.record(
-        db, ref, label + ((": " + note.strip()) if note.strip() else ""), p["id"]
-    )
-    from hotel import operations
-
-    operations.confirmed(db, p, t, version, resolved)
+    if note.strip():
+        label += ": " + note.strip()
+    operations.confirmed(db, p, t, version, resolved, work["staff"], label)
     if resolved:
         return {"status": "Resolved"}
     return {"status": db.one("SELECT status FROM tickets WHERE id=?", (ref,))["status"]}
 
 
-def context(db, p, t, *, include_outcomes=True):
+LATEST_NOTE = "SELECT n.analysis FROM call_notes n JOIN calls c ON c.id=n.id WHERE c.ticket=? ORDER BY n.updated DESC LIMIT 1"
+
+
+def ticket_extraction(t, latest):
     a = t["analysis"]
     if isinstance(a, str):
         a = json.loads(a)
     text = a.get("english") or t["complaint"]
     extracted = a.get("extraction") or extract(text, t["room"])
     extracted = {**extracted, "verified_room": t["room"]}
-    latest = db.one(
-        "SELECT n.analysis FROM call_notes n JOIN calls c ON c.id=n.id WHERE c.ticket=? ORDER BY n.updated DESC LIMIT 1",
-        (t["id"],),
-    )
     if latest:
         live_ex = json.loads(latest["analysis"]).get("extraction", {})
         extracted = {
             **extracted,
             "constraints": live_ex.get("constraints", extracted["constraints"]),
         }
+    return extracted
+
+
+def guest_work(t, work, extracted):
+    from hotel.request_updates import can_clarify
+    from hotel.issue_labels import problem_label
+
+    return {
+        **{k: work[k] for k in ("version", "action", "outcome", "updated")},
+        "can_clarify": can_clarify(t),
+        "problem": problem_label(extracted),
+        "constraints": [c["constraint"] for c in extracted.get("constraints", [])],
+    }
+
+
+def context(db, p, t, *, include_outcomes=True):
+    latest = db.one(LATEST_NOTE, (t["id"],))
+    extracted = ticket_extraction(t, latest)
     work = current(db, t["id"])
     if p["role"] not in store.STAFF:
-        from hotel.request_updates import can_clarify
-        from hotel.issue_labels import problem_label
-
-        return {
-            **{k: work[k] for k in ("version", "action", "outcome", "updated")},
-            "can_clarify": can_clarify(t),
-            "problem": problem_label(extracted),
-            "constraints": [c["constraint"] for c in extracted.get("constraints", [])],
-        }
+        return guest_work(t, work, extracted)
     return {
         **work,
         "extraction": extracted,

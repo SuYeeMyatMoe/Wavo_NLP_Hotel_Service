@@ -87,12 +87,15 @@ def state(db, t, value, reason, at=None):
         store.record(db, t["id"], LABELS[value], "Controller")
 
 
+ACTIVE_ASSIGNMENT = (
+    "SELECT a.*,r.name FROM task_assignments a JOIN staff_roster r ON r.staff=a.staff "
+    "WHERE a.ticket=? AND a.active=1"
+)
+
+
 def snapshot(db, ref):
     life = db.one("SELECT * FROM service_lifecycle WHERE ticket=?", (ref,))
-    assignment = db.one(
-        "SELECT a.*,r.name FROM task_assignments a JOIN staff_roster r ON r.staff=a.staff WHERE a.ticket=? AND a.active=1",
-        (ref,),
-    )
+    assignment = db.one(ACTIVE_ASSIGNMENT, (ref,))
     return _snapshot(life, assignment)
 
 
@@ -506,13 +509,15 @@ def validate_completion(t):
         )
 
 
-def confirmed(db, p, t, version, resolved):
+def confirmed(db, p, t, version, resolved, previous_staff, label):
     ref = t["id"]
     at = store.now()
-    previous = db.one(
-        "SELECT * FROM task_assignments WHERE ticket=? AND active=1", (ref,)
-    )
     with db.batch():
+        db.run(
+            "UPDATE ticket_work SET version=version+1,updated=? WHERE ticket=?",
+            (at, ref),
+        )
+        store.record(db, ref, label, p["id"])
         db.run(
             "INSERT INTO guest_feedback VALUES(?,?,?,?,?,?,?)",
             (str(uuid4()), t["hotel"], ref, p["id"], int(resolved), version, at),
@@ -541,11 +546,11 @@ def confirmed(db, p, t, version, resolved):
             p["id"],
             at,
         )
-        if previous:
+        if previous_staff:
             notify(
                 db,
                 t["hotel"],
-                previous["staff"],
+                previous_staff,
                 ref,
                 "feedback",
                 "Guest confirmed completion."

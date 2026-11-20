@@ -519,10 +519,10 @@ def ticket_view(guest):
     ref = S.get("selected_ticket")
     if not ref:
         st.rerun()
-    t = request("GET", "/tickets/" + ref)
-    work = t["work"]
     if st.button(tr("Back to requests")):
         jump("My requests" if guest else "My work")
+    t = request("GET", "/tickets/" + ref)
+    work = t["work"]
     heading = ("Room " + t["room"] + " · " if t["room"] else "") + t["department"]
     if guest:
         st.subheader(heading)
@@ -1247,7 +1247,7 @@ elif page == "My requests":
     if S.get("selected_ticket"):
         guest_ticket_view()
     else:
-        history(jump)
+        history(guest_ticket_view)
 else:
     more()
 

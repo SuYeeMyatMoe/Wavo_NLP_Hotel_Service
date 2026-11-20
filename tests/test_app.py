@@ -294,6 +294,7 @@ def test_summary_ok_keeps_work_open_and_unified_history(tmp_path, monkeypatch):
         )
         .json()["id"]
     )
+    guest.text_input(key="history_search").set_value(ref).run()
     guest.session_state.selected_ticket = ref
     guest.session_state.destination = "My requests"
     guest.run()
@@ -303,6 +304,10 @@ def test_summary_ok_keeps_work_open_and_unified_history(tmp_path, monkeypatch):
     button(guest, "Back to requests").click().run()
     assert not guest.exception
     assert guest.session_state.get("selected_ticket") is None
+    assert guest.text_input(key="history_search").value == ref
+    table = next(d.value for d in guest.dataframe if "Reference" in d.value.columns)
+    assert len(table) == 1
+    guest.text_input(key="history_search").set_value("").run()
     table = next(d.value for d in guest.dataframe if "Reference" in d.value.columns)
     assert any(second[:12] in r for r in table["Reference"])
     assert len(table) == 2 and all(table["Action"] == "Open")
