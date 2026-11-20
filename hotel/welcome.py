@@ -16,15 +16,15 @@ def landing():
     st.html(f"""<section class="service-shortcuts" id="hotel-services">
           <div data-wavo-reveal="0"><p class="hotel-overline">Hotel services</p><h2>How can we help?</h2></div>
           <div class="shortcut-grid">
-            <a data-wavo-reveal="1" href="?login=guest&amp;service=comfort" target="_self">{service_icon("bed")}<span>Room comfort</span></a>
-            <a data-wavo-reveal="2" href="?login=guest&amp;service=housekeeping" target="_self">{service_icon("sparkle")}<span>Housekeeping</span></a>
-            <a data-wavo-reveal="3" href="?login=guest&amp;service=wifi" target="_self">{service_icon("wifi")}<span>Wi-Fi help</span></a>
-            <a data-wavo-reveal="4" href="?login=guest&amp;service=special" target="_self">{service_icon("bell")}<span>Special requests</span></a>
+            <div data-wavo-card data-wavo-reveal="1"><a href="?login=guest&amp;service=comfort" target="_self">{service_icon("bed")}<span>Room comfort</span></a></div>
+            <div data-wavo-card data-wavo-reveal="2"><a href="?login=guest&amp;service=housekeeping" target="_self">{service_icon("sparkle")}<span>Housekeeping</span></a></div>
+            <div data-wavo-card data-wavo-reveal="3"><a href="?login=guest&amp;service=wifi" target="_self">{service_icon("wifi")}<span>Wi-Fi help</span></a></div>
+            <div data-wavo-card data-wavo-reveal="4"><a href="?login=guest&amp;service=special" target="_self">{service_icon("bell")}<span>Special requests</span></a></div>
           </div></section>
         <section class="hotel-services"><div class="section-head" data-wavo-reveal="0"><div><p class="hotel-overline">Hotel services</p><h2>During your stay</h2></div></div>
         <div class="service-images">
-          <a data-wavo-reveal="1" href="?login=guest&amp;service=comfort" target="_self"><img src="app/static/room-detail.jpg" alt="Guest room with a wood-panelled headboard" loading="lazy" decoding="async"><div><strong>In-room service</strong><span>Repairs and housekeeping</span><b>Request room service</b></div></a>
-          <a data-wavo-reveal="2" href="?login=guest" target="_self"><img src="app/static/reception.jpg" alt="Seating and warm lights in the hotel lobby" loading="lazy" decoding="async"><div><strong>Reception</strong><span>Hotel information and guest support</span><b>Contact reception</b></div></a>
+          <div data-wavo-card data-wavo-reveal="1"><a href="?login=guest&amp;service=comfort" target="_self"><img src="app/static/room-detail.jpg" alt="Guest room with a wood-panelled headboard" loading="lazy" decoding="async"><div><strong>In-room service</strong><span>Repairs and housekeeping</span><b>Request room service</b></div></a></div>
+          <div data-wavo-card data-wavo-reveal="2"><a href="?login=guest" target="_self"><img src="app/static/reception.jpg" alt="Seating and warm lights in the hotel lobby" loading="lazy" decoding="async"><div><strong>Reception</strong><span>Hotel information and guest support</span><b>Contact reception</b></div></a></div>
         </div></section>
         <footer class="hotel-footer" data-wavo-reveal="0"><span role="img" aria-label="Wavo">{WORDMARK}</span></footer>""")
     st.stop()

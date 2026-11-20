@@ -182,10 +182,98 @@
   background-color: var(--glass-hover);
   border-color: var(--accent);
   box-shadow: 0 12px 25px #24140822;
-  transform: translateY(-4px);
 }
 .service-images a img { transition: filter .24s ease; }
 .service-images a:hover img { filter: saturate(1.17) brightness(1.08); }
+
+[data-wavo-card] {
+  display: grid;
+  min-width: 0;
+  --card-brass: #f5b664;
+  --card-copper: #c46b38;
+  --card-cream: #ffe2b7;
+  --card-phase: 0s;
+}
+[data-wavo-theme="light"] [data-wavo-card] {
+  --card-brass: #a87032;
+  --card-copper: #b96334;
+  --card-cream: #af7e40;
+}
+[data-wavo-card][data-wavo-reveal="2"] { --card-phase: -1.1s; }
+[data-wavo-card][data-wavo-reveal="3"] { --card-phase: -2.2s; }
+[data-wavo-card][data-wavo-reveal="4"] { --card-phase: -3.3s; }
+
+[data-wavo-card] > a {
+  position: relative;
+  isolation: isolate;
+  user-select: none;
+  --card-spot: transparent;
+  transform: none;
+  transition:
+    transform .46s cubic-bezier(.2,.76,.28,1.22),
+    background-color .24s ease, border-color .24s ease, box-shadow .24s ease;
+}
+[data-wavo-card] > a::before,
+[data-wavo-card] > a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  --card-spectrum: conic-gradient(
+    from var(--wavo-card-angle, 0deg),
+    transparent 5deg,
+    var(--card-brass) 46deg,
+    transparent 115deg,
+    var(--card-copper) 170deg,
+    transparent 245deg,
+    var(--card-cream) 304deg,
+    transparent 360deg
+  );
+}
+[data-wavo-card] > a::before {
+  z-index: 0;
+  background:
+    radial-gradient(circle at var(--card-light-x, 50%) var(--card-light-y, 50%), var(--card-spot), transparent 63%),
+    var(--card-spectrum);
+  mask-image: radial-gradient(ellipse at center, #0001 21%, #0004 52%, #0008 88%, #000a);
+  opacity: .44;
+}
+[data-wavo-card] > a > :is(span, div) { position: relative; z-index: 1; }
+[data-wavo-card] > a::after {
+  z-index: 2;
+  border: 1px solid var(--card-brass);
+  opacity: .61;
+  transition: opacity .2s ease;
+}
+@supports (mask-composite: exclude) {
+  [data-wavo-card] > a::after {
+    padding: 1px;
+    border: 0;
+    background: var(--card-spectrum);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+}
+[data-wavo-card] > a:is(:hover, :focus-visible)::after { opacity: .95; }
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-wavo-card] > a::before,
+  [data-wavo-card] > a::after { animation: wavo-card-sweep 4.4s linear var(--card-phase) infinite; }
+  [data-wavo-card][data-wavo-card-active] { z-index: 3; position: relative; }
+  [data-wavo-card][data-wavo-card-active] > a {
+    --card-spot: color-mix(in srgb, var(--card-brass) 84%, transparent);
+    transform: perspective(720px) translate3d(var(--card-drift, 0px), -6px, 0)
+      rotateX(var(--card-pitch, 0deg)) rotateY(var(--card-yaw, 0deg)) scale(1.018);
+    transition-duration: .14s, .24s, .24s, .24s;
+  }
+  [data-wavo-card] > a:active {
+    transform: perspective(720px) scale(.976);
+    transition-duration: .09s;
+  }
+}
+@keyframes wavo-card-sweep { to { --wavo-card-angle: 360deg; } }
+
 .login-photo { border: 1px solid var(--line); }
 .stApp [data-wavo-panel],
 .stApp [data-testid="stForm"],

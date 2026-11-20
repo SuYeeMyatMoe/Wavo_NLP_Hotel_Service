@@ -96,6 +96,15 @@ export default function mount({ parentElement }) {
 
   const root = document.documentElement;
   const main = document.querySelector('[data-testid="stMain"]');
+  if (window.CSS?.registerProperty) {
+    try {
+      CSS.registerProperty({
+        name: "--wavo-card-angle", syntax: "<angle>", inherits: false, initialValue: "0deg",
+      });
+    } catch {
+      // A previous mount in this document may have registered the same property.
+    }
+  }
   const stopReveals = watchWorkspace(main);
   const viewport = new ResizeObserver(updateWorkspaceWidth);
   function updateWorkspaceWidth() {
@@ -114,6 +123,54 @@ export default function mount({ parentElement }) {
   let last = 0;
   let lastX = -100;
   let lastY = -100;
+  let activeCard = null;
+  let cardFrame = 0;
+  let pointerX = 0;
+  let pointerY = 0;
+
+  function settleCard() {
+    activeCard?.removeAttribute("data-wavo-card-active");
+    activeCard = null;
+    cancelAnimationFrame(cardFrame);
+    cardFrame = 0;
+  }
+
+  function drawCard() {
+    cardFrame = 0;
+    if (!activeCard?.isConnected) {
+      settleCard();
+      return;
+    }
+    // The grid cell stays stationary while its link tilts, so tracking can't
+    // feed the tilted rectangle back into the next pointer calculation.
+    const bounds = activeCard.getBoundingClientRect();
+    if (!bounds.width || !bounds.height) return;
+    const x = Math.max(0, Math.min(1, (pointerX - bounds.left) / bounds.width));
+    const y = Math.max(0, Math.min(1, (pointerY - bounds.top) / bounds.height));
+    const style = activeCard.style;
+    style.setProperty("--card-light-x", `${x * 100}%`);
+    style.setProperty("--card-light-y", `${y * 100}%`);
+    style.setProperty("--card-yaw", `${(x - .5) * 16}deg`);
+    style.setProperty("--card-pitch", `${(.5 - y) * 13}deg`);
+    style.setProperty("--card-drift", `${(x - .5) * 7}px`);
+    activeCard.setAttribute("data-wavo-card-active", "");
+  }
+
+  function trackCard(event) {
+    const card = event.target instanceof Element ? event.target.closest("[data-wavo-card]") : null;
+    if (card !== activeCard) {
+      settleCard();
+      activeCard = card;
+    }
+    if (!activeCard) return;
+    pointerX = event.clientX;
+    pointerY = event.clientY;
+    if (!cardFrame) cardFrame = requestAnimationFrame(drawCard);
+  }
+
+  function pointerGone(event) {
+    if (!event.relatedTarget) settleCard();
+  }
 
   function applyTheme(theme) {
     root.dataset.wavoTheme = theme === "light" ? "light" : "dark";
@@ -159,6 +216,7 @@ export default function mount({ parentElement }) {
 
   function move(event) {
     if (reduced.matches || event.pointerType === "touch") return;
+    trackCard(event);
     const now = performance.now();
     const dx = event.clientX - lastX;
     const dy = event.clientY - lastY;
@@ -174,6 +232,11 @@ export default function mount({ parentElement }) {
     window.removeEventListener("wavo:set-theme", updateTheme);
     window.removeEventListener("storage", syncTabs);
     document.removeEventListener("pointermove", move, true);
+    window.removeEventListener("pointerout", pointerGone);
+    window.removeEventListener("blur", settleCard);
+    main?.removeEventListener("scroll", settleCard);
+    reduced.removeEventListener("change", settleCard);
+    settleCard();
     viewport.disconnect();
     stopReveals();
     layer.remove();
@@ -189,5 +252,9 @@ export default function mount({ parentElement }) {
   window.addEventListener("storage", syncTabs);
   applyTheme(root.dataset.wavoTheme || themeFromStorage());
   document.addEventListener("pointermove", move, { capture: true, passive: true });
+  window.addEventListener("pointerout", pointerGone);
+  window.addEventListener("blur", settleCard);
+  main?.addEventListener("scroll", settleCard, { passive: true });
+  reduced.addEventListener("change", settleCard);
   return cleanup;
 }
