@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { useReducedMotion } from "motion/react";
 import { PhotoRoom } from "./PhotoRoom";
@@ -18,7 +18,22 @@ function VintageRoom({
   compact?: boolean;
   telephone: () => void;
 }) {
-  const [light, setLight] = useState(false);
+  const [light, setLight] = useState(() => {
+    const active = document.documentElement.dataset.wavoTheme;
+    if (active) return active === "light";
+    try {
+      return localStorage.getItem("wavo.hotel.theme") === "light";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    function syncTheme() {
+      setLight(document.documentElement.dataset.wavoTheme === "light");
+    }
+    window.addEventListener("wavo:theme-changed", syncTheme);
+    return () => window.removeEventListener("wavo:theme-changed", syncTheme);
+  }, []);
   const reduced = Boolean(useReducedMotion());
   return (
     <section
@@ -29,7 +44,12 @@ function VintageRoom({
       <PhotoRoom
         light={light}
         reduced={reduced}
-        onToggle={() => setLight((value) => !value)}
+        onToggle={() => {
+          const theme = light ? "dark" : "light";
+          document.documentElement.dataset.wavoTheme = theme;
+          setLight(!light);
+          window.dispatchEvent(new CustomEvent("wavo:set-theme", { detail: theme }));
+        }}
         onPhone={telephone}
       />
       <p className="sr-only" role="status">

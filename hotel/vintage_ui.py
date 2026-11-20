@@ -28,13 +28,16 @@ def room(*, entrance=None):
 
 
 @st.cache_resource
-def cursor_component():
+def workspace_effects_component():
     return st.components.v2.component(
-        "wavo_cursor_embers",
+        "wavo_workspace_effects",
         html='<span hidden aria-hidden="true"></span>',
-        js=(HERE / "cursor_embers.js").read_text(encoding="utf-8"),
+        js="\n".join(
+            (HERE / name).read_text(encoding="utf-8")
+            for name in ("mascot_depth.js", "workspace_effects.js")
+        ),
     )
 
 
-def cursor_embers():
-    cursor_component()(key="wavo_cursor_embers", height=1)
+def workspace_effects():
+    workspace_effects_component()(key="wavo_workspace_effects", height=1)

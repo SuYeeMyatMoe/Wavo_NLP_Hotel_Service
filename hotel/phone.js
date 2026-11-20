@@ -148,6 +148,6 @@ export default function ({parentElement,data,setStateValue}) {
    }
  };
  end.onclick=()=>{if(active()||s.call||s.startKey)void finish();else{caption.textContent='';help.textContent='';show('idle');}};
- const mascot=$('.mascot');mascot.setAttribute('aria-label',s.data.mascot||'Your Wavo concierge');mascot.onclick=()=>{mascot.classList.remove('wave');void mascot.offsetWidth;mascot.classList.add('wave');};
+ const mascot=$('.mascot');mascot.setAttribute('aria-label',s.data.mascot||'Make Wavo jump');
  s.render();return s.dispose;
 }

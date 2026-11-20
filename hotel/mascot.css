@@ -1,0 +1,66 @@
+[data-wavo-mascot] {
+  display: grid;
+  place-items: center;
+  position: relative;
+  isolation: isolate;
+  width: min(230px, 100%);
+  height: auto;
+  aspect-ratio: 1;
+  padding: 0;
+  margin-inline: auto;
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+  cursor: pointer;
+}
+[data-wavo-mascot]::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: auto 23% 8% 23%;
+  height: 13%;
+  background: radial-gradient(ellipse, #25140775, transparent 70%);
+  transition: opacity .28s ease, transform .28s ease;
+}
+[data-wavo-mascot][data-jumping]::before { opacity: .35; transform: scale(.72); }
+.wavo-mascot-actor {
+  display: block;
+  position: relative;
+  width: 100%;
+  transform: perspective(520px) rotateX(var(--mascot-tilt-x, 0deg)) rotateY(var(--mascot-tilt-y, 0deg));
+  transform-origin: 50% 78%;
+  transition: transform .25s ease-out;
+}
+[data-wavo-mascot] .wavo-mascot-actor :is(img, canvas) {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+  border: 0;
+  border-radius: 0;
+  filter: drop-shadow(0 7px 10px #21100555);
+  user-select: none;
+  transform-origin: 50% 87%;
+  animation: mascot-idle 4.8s ease-in-out infinite;
+}
+.wavo-mascot-depth { position: absolute; inset: 0; visibility: hidden; }
+.has-depth .wavo-mascot-depth { visibility: visible; }
+.has-depth img { visibility: hidden; }
+.call-avatar[data-mode="speaking"] [data-wavo-mascot] .wavo-mascot-actor :is(img, canvas) {
+  animation: mascot-talk .74s ease-in-out infinite;
+}
+.call-avatar:is([data-mode="thinking"], [data-mode="connecting"]) [data-wavo-mascot] .wavo-mascot-actor :is(img, canvas) {
+  animation: mascot-idle 1.7s ease-in-out infinite;
+}
+@keyframes mascot-idle {
+  0%, 100% { transform: translateY(0) rotate(-1.4deg); }
+  50% { transform: translateY(-6px) rotate(1.7deg); }
+}
+@keyframes mascot-talk {
+  0%, 100% { transform: translateY(0) rotate(-1.8deg) scaleY(1); }
+  50% { transform: translateY(-5px) rotate(1.6deg) scaleY(1.025); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wavo-mascot-actor, .wavo-mascot-actor :is(img, canvas) { animation: none !important; transition: none !important; }
+}

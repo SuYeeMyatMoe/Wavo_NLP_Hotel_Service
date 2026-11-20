@@ -6,7 +6,7 @@ import hmac
 from hotel.demo_accounts import ACCOUNTS as DEMO_ACCOUNTS, GUESTS
 from hotel.vintage_ui import room
 
-BRAND = '<a class="hotel-mark" href="./" target="_self"><img class="wavo-icon" src="app/static/wavo-icon.png" alt=""> Wavo</a>'
+BRAND = '<a class="hotel-mark" href="./" target="_self"><img class="wavo-icon" src="app/static/wavo-brass-mark.png" alt=""> Wavo</a>'
 
 
 def landing():

@@ -16,30 +16,8 @@ export function PhotoRoom({ light, reduced, onToggle, onPhone }: Props) {
     chainCanvas = useRef<HTMLCanvasElement>(null!),
     handle = useRef<HTMLButtonElement>(null!);
   const [ready, setReady] = useState(false);
-  const [hintReady, setHintReady] = useState(false),
-    [hintDismissed, setHintDismissed] = useState(false);
-  useEffect(() => {
-    if (!ready) return;
-    let timer: ReturnType<typeof setTimeout>,
-      remaining = 5000,
-      started = 0;
-    function visibility() {
-      clearTimeout(timer);
-      if (document.hidden) {
-        if (started) remaining -= performance.now() - started;
-        started = 0;
-      } else {
-        started = performance.now();
-        timer = setTimeout(() => setHintReady(true), Math.max(0, remaining));
-      }
-    }
-    visibility();
-    document.addEventListener("visibilitychange", visibility);
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener("visibilitychange", visibility);
-    };
-  }, [ready]);
+  const [hintDismissed, setHintDismissed] = useState(false);
+  const showHint = ready && !hintDismissed;
   const state = useRef({
     hover: false,
     drag: false,
@@ -176,7 +154,6 @@ export function PhotoRoom({ light, reduced, onToggle, onPhone }: Props) {
     <section className="photo-room-shell">
       <div
         ref={stage}
-        data-hint-ready={hintReady}
         className={`photo-stage ${light ? "lamp-on" : "lamp-off"} ${ready ? "photo-ready" : ""}`}
         onPointerMove={move}
         onPointerLeave={() => {
@@ -188,7 +165,7 @@ export function PhotoRoom({ light, reduced, onToggle, onPhone }: Props) {
       >
         <img
           className="reference-photo cleaned-fallback"
-          src={asset("room-brown-bare.png")}
+          src={asset(light ? "room-light-bare.png" : "room-brown-bare.png")}
           alt="Vintage room with a brass lamp, plants and antique telephone; no navigation bar"
           draggable={false}
         />
@@ -241,17 +218,16 @@ export function PhotoRoom({ light, reduced, onToggle, onPhone }: Props) {
         <button
           className="photo-phone"
           aria-label="Press the brass telephone button to open AI reception"
-          aria-describedby={
-            hintReady && !hintDismissed ? "phone-hint" : undefined
-          }
-          onClick={() => {
-            setHintDismissed(true);
-            onPhone();
+          aria-describedby={showHint ? "phone-hint" : undefined}
+          onPointerEnter={(event) => {
+            if (event.pointerType !== "touch") setHintDismissed(false);
           }}
+          onFocus={() => setHintDismissed(false)}
+          onClick={onPhone}
         >
           <span className="sr-only">Use telephone</span>
         </button>
-        {hintReady && !hintDismissed && (
+        {showHint && (
           <>
             <aside className="phone-hint" id="phone-hint" aria-live="polite">
               <button

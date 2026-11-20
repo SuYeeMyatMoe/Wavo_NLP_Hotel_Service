@@ -60,9 +60,7 @@ export default function({parentElement,data,setTriggerValue,setStateValue}) {
   const mascot=box.querySelector(".mascot");
   mascot.setAttribute("aria-label",data.replay);
   mascot.title=data.replay;
-  mascot.onanimationend=()=>mascot.classList.remove("wave");
   mascot.onclick=()=>{
-    mascot.classList.remove("wave");void mascot.offsetWidth;mascot.classList.add("wave");
     if(!state.stream){button.onclick();return;}
     if(state.mode!=="thinking"){state.revision="";reply();}
   };
