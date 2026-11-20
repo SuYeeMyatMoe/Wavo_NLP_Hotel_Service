@@ -211,14 +211,21 @@ def dispatch(db, ref, *, exclude=(), at=None, review_reason=""):
         (ref,),
     )
     marker = f"dispatch:{ref}:{history['n']}"
+    if not t["guest"] or not t["room"]:
+        # Public feedback is not an authenticated service request. Keep it in
+        # supervisor review without consuming a worker's service assignment.
+        escalate(
+            db,
+            t,
+            "Reception must verify the guest reservation before physical service.",
+            marker,
+            at,
+        )
+        return None
     if t["urgency"] in {"Critical", "Unassessed"}:
         review_reason = "Immediate supervisor review: " + t["urgency"]
     elif a.get("pending_question", {}).get("field") == "service_agreement":
         review_reason = "Reception must confirm guest agreement before any room visit."
-    elif not t["guest"] or not t["room"]:
-        review_reason = (
-            "Reception must verify the guest reservation before physical service."
-        )
     elif a.get("reception_followup") and not (
         solution.get("procedures")
         and not solution.get("questions")

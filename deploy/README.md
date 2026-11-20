@@ -5,6 +5,13 @@ The existing Supabase project stores all durable data. LiveKit Cloud's **Build**
 plan runs the `hotel-reception` agent; Gemini provides live audio, translation,
 and transcription. No laptop worker is required for the hosted app.
 
+Hosted app: https://wavo-web-zcip.onrender.com
+
+API health: https://wavo-api-zcip.onrender.com/healthz
+
+The deployment branch is `codex/free-render-deployment`. The existing agent is
+recorded in `livekit.toml`; use `agent deploy`, not `agent create`, for updates.
+
 ## Build and configure
 
 1. Validate `render.yaml` with `render blueprints validate render.yaml` in the
@@ -40,6 +47,8 @@ The agent image intentionally excludes model weights, training data, UI assets,
 local environments, and database libraries. `record=False` disables SDK audio,
 transcript, trace, and log uploads. Application transcript consent remains
 enforced separately by the backend.
+Project-level LiveKit Agent observability is also disabled, so cloud debugging
+does not retain conversation audio or transcripts.
 
 ## Operation and limits
 
@@ -58,6 +67,13 @@ enforced separately by the backend.
 - `gemini-3.1-flash-lite` handles language conversion; trained scikit-learn models
   still classify English input. Provider errors do not produce fabricated text
   or work confirmation. Messages that cannot be assessed go to reception review.
+- Language operations use the model's default sampling settings, at most three
+  attempts, exponential backoff with jitter, and a 25-second total deadline.
+  `GEMINI_LANGUAGE_FALLBACK_MODEL=gemini-3.5-flash-lite` enables the final attempt
+  on another free-tier model after transient service/network failures. Quota,
+  authentication, invalid-input and malformed-response failures do not trigger
+  fallback. Both models use the existing free Gemini project, with no paid tier
+  or billing upgrade. Provider capacity failures can still require reception review.
 - This is an academic demo using public demo accounts. Gemini's free API tier has
   provider data-use terms; app transcript consent is not a provider-retention guarantee.
 

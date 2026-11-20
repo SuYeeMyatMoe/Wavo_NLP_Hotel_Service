@@ -5,6 +5,8 @@ import json
 import logging
 import os
 import wave
+import time
+import random
 from functools import lru_cache
 
 LANGUAGES = {
@@ -15,6 +17,9 @@ LANGUAGES = {
     "my": "Burmese",
 }
 UNAVAILABLE = "Language processing is unavailable. Please retry or send a typed message to reception."
+TRANSIENT_STATUS = {500, 502, 503, 504}
+REQUEST_SECONDS = 25
+MAX_ATTEMPTS = 3
 
 
 class LanguageUnavailable(RuntimeError):
@@ -31,10 +36,8 @@ def client(api_key):
         http_options=types.HttpOptions(
             timeout=20000,
             retry_options=types.HttpRetryOptions(
-                attempts=2,
-                initial_delay=1,
-                max_delay=2,
-                http_status_codes=[500, 502, 503, 504],
+                # One retry owner: generate() enforces the total time budget.
+                attempts=1,
             ),
         ),
     )
@@ -42,19 +45,50 @@ def client(api_key):
 
 def generate(instruction, contents, schema):
     from google.genai import types
+    import httpx
 
     try:
-        response = client(os.environ["GOOGLE_API_KEY"]).models.generate_content(
-            model=os.getenv("GEMINI_LANGUAGE_MODEL", "gemini-3.1-flash-lite"),
-            contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=instruction,
-                temperature=0,
-                max_output_tokens=8192,
-                response_mime_type="application/json",
-                response_json_schema=schema,
-            ),
-        )
+        provider = client(os.environ["GOOGLE_API_KEY"])
+        model = os.getenv("GEMINI_LANGUAGE_MODEL", "gemini-3.1-flash-lite")
+        fallback = os.getenv("GEMINI_LANGUAGE_FALLBACK_MODEL", "")
+        if fallback not in {"", "gemini-3.5-flash-lite"}:
+            raise ValueError("Unsupported free-tier fallback model")
+        deadline = time.monotonic() + REQUEST_SECONDS
+        for attempt in range(MAX_ATTEMPTS):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("Language deadline reached")
+            try:
+                response = provider.models.generate_content(
+                    model=fallback
+                    if fallback and attempt == MAX_ATTEMPTS - 1
+                    else model,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        system_instruction=instruction,
+                        # Gemini 3 recommends its default sampling settings.
+                        # Forcing temperature=0 can degrade model behavior.
+                        max_output_tokens=8192,
+                        response_mime_type="application/json",
+                        response_json_schema=schema,
+                        http_options=types.HttpOptions(
+                            timeout=max(1, int(remaining * 1000))
+                        ),
+                    ),
+                )
+                break
+            except Exception as exc:
+                transient = getattr(
+                    exc, "code", None
+                ) in TRANSIENT_STATUS or isinstance(
+                    exc, (httpx.TimeoutException, httpx.NetworkError)
+                )
+                remaining = deadline - time.monotonic()
+                delay = 2**attempt + random.uniform(0, 0.5)
+                # Quota/auth/invalid input and malformed output are never retried.
+                if not transient or attempt + 1 == MAX_ATTEMPTS or remaining <= delay:
+                    raise
+                time.sleep(delay)
         result = json.loads(response.text or "")
         if not isinstance(result, dict):
             raise ValueError("Expected an object")

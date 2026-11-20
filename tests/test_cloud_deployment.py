@@ -19,11 +19,13 @@ def wav():
 
 @pytest.fixture
 def gemini(monkeypatch):
-    cloud.client.cache_clear()
+    clear = cloud.client.cache_clear
+    clear()
     monkeypatch.setenv("WAVO_LANGUAGE_PROVIDER", "gemini")
     monkeypatch.setenv("GOOGLE_API_KEY", "test-only")
+    monkeypatch.delenv("GEMINI_LANGUAGE_FALLBACK_MODEL", raising=False)
     yield
-    cloud.client.cache_clear()
+    clear()
 
 
 @pytest.mark.parametrize("language", ["en", "zh", "hi", "ms", "my"])
@@ -78,8 +80,7 @@ def test_sdk_response_validation(gemini, monkeypatch, body):
 
     class Client:
         def __init__(self, **kwargs):
-            assert kwargs["http_options"].retry_options.attempts == 2
-            assert 429 not in kwargs["http_options"].retry_options.http_status_codes
+            assert kwargs["http_options"].retry_options.attempts == 1
             self.models = self
 
         def __enter__(self):
@@ -90,6 +91,7 @@ def test_sdk_response_validation(gemini, monkeypatch, body):
 
         def generate_content(self, **kwargs):
             assert kwargs["config"].response_mime_type == "application/json"
+            assert kwargs["config"].temperature is None
             return SimpleNamespace(text=body)
 
     monkeypatch.setattr(genai, "Client", Client)
@@ -111,6 +113,120 @@ def test_quota_failure_is_sanitized(gemini, monkeypatch):
         cloud.translate("test", "en", "my")
     assert "secret-provider" not in str(error.value)
     assert error.value.__suppress_context__
+
+
+@pytest.mark.parametrize(
+    "code,expected", [(503, 3), (500, 3), (429, 1), (401, 1), (400, 1)]
+)
+def test_provider_retries_only_transient_errors(gemini, monkeypatch, code, expected):
+    calls, sleeps, now = [], [], [0.0]
+
+    class Failure(Exception):
+        pass
+
+    def fail(**kwargs):
+        calls.append(kwargs)
+        error = Failure("private provider response")
+        error.code = code
+        raise error
+
+    def sleep(seconds):
+        sleeps.append(seconds)
+        now[0] += seconds
+
+    monkeypatch.setattr(
+        cloud,
+        "client",
+        lambda _: SimpleNamespace(models=SimpleNamespace(generate_content=fail)),
+    )
+    monkeypatch.setattr(cloud.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(cloud.time, "sleep", sleep)
+    monkeypatch.setattr(cloud.random, "uniform", lambda *args: 0)
+    with pytest.raises(cloud.LanguageUnavailable):
+        cloud.translate("空调坏了", "zh", "en")
+    assert len(calls) == expected
+    assert sleeps == ([1, 2] if expected == 3 else [])
+    assert [c["config"].http_options.timeout for c in calls] == (
+        [25000, 24000, 22000] if expected == 3 else [25000]
+    )
+
+
+def test_transient_recovery_preserves_result(gemini, monkeypatch):
+    calls = []
+
+    def generate(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 1:
+            import httpx
+
+            raise httpx.ConnectError("temporary")
+        return SimpleNamespace(text='{"text":"The AC is broken."}')
+
+    monkeypatch.setattr(
+        cloud,
+        "client",
+        lambda _: SimpleNamespace(models=SimpleNamespace(generate_content=generate)),
+    )
+    monkeypatch.setattr(cloud.time, "sleep", lambda _: None)
+    assert cloud.translate("空调坏了", "zh", "en") == "The AC is broken."
+    assert len(calls) == 2
+
+
+def test_provider_deadline_prevents_another_attempt(gemini, monkeypatch):
+    now, calls = [0.0], []
+
+    def generate(**kwargs):
+        import httpx
+
+        calls.append(kwargs)
+        now[0] = 25
+        raise httpx.ReadTimeout("deadline")
+
+    monkeypatch.setattr(
+        cloud,
+        "client",
+        lambda _: SimpleNamespace(models=SimpleNamespace(generate_content=generate)),
+    )
+    monkeypatch.setattr(cloud.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(
+        cloud.time, "sleep", lambda _: pytest.fail("Deadline exhausted")
+    )
+    with pytest.raises(cloud.LanguageUnavailable):
+        cloud.translate("空调坏了", "zh", "en")
+    assert len(calls) == 1
+
+
+def test_free_model_fallback_only_after_transient_failures(gemini, monkeypatch):
+    calls = []
+
+    def generate(**kwargs):
+        calls.append(kwargs["model"])
+        if len(calls) < 3:
+            error = RuntimeError("unavailable")
+            error.code = 503
+            raise error
+        return SimpleNamespace(text='{"text":"The AC is broken."}')
+
+    monkeypatch.setenv("GEMINI_LANGUAGE_FALLBACK_MODEL", "gemini-3.5-flash-lite")
+    monkeypatch.setattr(
+        cloud,
+        "client",
+        lambda _: SimpleNamespace(models=SimpleNamespace(generate_content=generate)),
+    )
+    monkeypatch.setattr(cloud.time, "sleep", lambda _: None)
+    assert cloud.translate("空调坏了", "zh", "en") == "The AC is broken."
+    assert calls == [
+        "gemini-3.1-flash-lite",
+        "gemini-3.1-flash-lite",
+        "gemini-3.5-flash-lite",
+    ]
+
+
+def test_rejects_unapproved_fallback_model(gemini, monkeypatch):
+    monkeypatch.setenv("GEMINI_LANGUAGE_FALLBACK_MODEL", "gemini-4-carbon")
+    monkeypatch.setattr(cloud, "client", lambda _: SimpleNamespace())
+    with pytest.raises(cloud.LanguageUnavailable):
+        cloud.translate("空调坏了", "zh", "en")
 
 
 def test_readiness_only_retries_get(monkeypatch):

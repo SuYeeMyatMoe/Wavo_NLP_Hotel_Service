@@ -328,13 +328,21 @@ def test_outcome_requires_work_then_guest_can_reopen(client):
     )
 
 
-def test_unlinked_feedback_requires_reservation_review(client):
+@pytest.mark.parametrize("room", ["", "305"])
+def test_unlinked_feedback_requires_reservation_review(client, room):
     ref = client.post(
         "/tickets",
-        json={"text": EXAMPLE, "source": "Public review", "key": str(uuid4())},
+        json={
+            "text": EXAMPLE,
+            "source": "Public review",
+            "room": room,
+            "key": str(uuid4()),
+        },
     ).json()["id"]
     item = client.get(f"/tickets/{ref}").json()
     assert item["status"] == "Escalated" and item["assignment"] is None
+    assert item["guest"] is None
+    assert "verify the guest reservation" in item["lifecycle"]["reason"]
     assert client.get(f"/tickets/{ref}", headers=GUEST).status_code == 403
 
 
