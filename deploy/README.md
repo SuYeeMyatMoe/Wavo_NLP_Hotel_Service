@@ -30,9 +30,9 @@ recorded in `livekit.toml`; use `agent deploy`, not `agent create`, for updates.
    secrets in browser component data, Git, or deployment logs.
 6. Authenticate the LiveKit CLI to the existing project. Run
    `python deploy/prepare_agent.py`, then
-   `lk agent create .runtime/livekit-agent --secrets-file <private-file> --region ap-south`.
-   Copy the generated `livekit.toml` from that directory to the repository root
-   for subsequent deployments. LiveKit supplies
+   `lk agent deploy .runtime/livekit-agent --secrets-file <private-file>`.
+   The tracked `livekit.toml` identifies the existing agent; do not create another.
+   LiveKit supplies
    project credentials; the private secrets file needs `HOTEL_API_URL`,
    `GOOGLE_API_KEY`, `GEMINI_LIVE_MODEL=gemini-3.1-flash-live-preview`,
    `WAVO_VOICE_IDLE_WORKERS=0`, `WAVO_VOICE_MAX_CALLS=2`, and
@@ -80,6 +80,9 @@ does not retain conversation audio or transcripts.
   provider data-use terms; app transcript consent is not a provider-retention guarantee.
 
 ## Verify and redeploy
+
+See [the deployment verification record](VERIFICATION.md) for observed results
+and the remaining provider availability limitation.
 
 Run `python -m pytest -q tests`. For a clean Linux check without local speech models:
 
