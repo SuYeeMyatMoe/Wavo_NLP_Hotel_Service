@@ -53,7 +53,18 @@ does not retain conversation audio or transcripts.
 ## Operation and limits
 
 - Render sleeps after 15 idle minutes; initial loading may take about a minute.
-  The UI retries only readiness reads for up to 120 seconds. Calls allow another
+  Opening the public website starts one background API wake-up, while the visitor
+  browses or enters credentials. Visitors share an active wake-up task; successful
+  readiness is reused for 60 seconds. Checks stop on success or after 120 seconds,
+  with no scheduled keep-alive traffic. Each readiness read allows up to 60 seconds
+  within that total deadline so Render can finish forwarding a cold request.
+  One visitor also sends a credential-free browser wake hint per shared task:
+  Render-to-Render requests were observed returning `502/no-deploy` without
+  waking a sleeping API. The server remains responsible for verifying readiness.
+  Authentication runs alongside wake-up.
+  The API serves health and workspace reads while one background task warms its
+  language resources; first inference can still wait for its required resource.
+  Calls allow another
   60 seconds for the voice agent to join. Ending a connecting call stops the mic.
 - Both Render services share 750 free instance hours per workspace per month.
   Do not use keep-alive pings. Two services cannot both run continuously all month
@@ -82,7 +93,8 @@ does not retain conversation audio or transcripts.
 ## Verify and redeploy
 
 See [the deployment verification record](VERIFICATION.md) for observed results
-and the remaining provider availability limitation.
+and the remaining provider availability limitation, and [startup measurements](PERFORMANCE.md)
+for the login optimization and cold-start checks.
 
 Run `python -m pytest -q tests`. For a clean Linux check without local speech models:
 
