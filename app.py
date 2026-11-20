@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parent
 st.set_page_config(
     page_title="Wavo | Hotel operations",
     layout="wide",
-    page_icon=str(ROOT / "static/wavo-favicon.png"),
+    page_icon=str(ROOT / "static/wavo-w.png"),
 )
 st.html(ROOT / "hotel/ui.css")
 st.html(ROOT / "hotel/hotel.css")
@@ -1045,7 +1045,7 @@ with st.container(key="masthead"):
     brand, account = st.columns([3, 1])
 with brand:
     st.html(
-        '<a class="brand" href="?home=1" target="_self"><img class="wavo-icon" src="app/static/wavo-icon.png" alt=""><span class="wavo-wordmark">Wavo</span><small>Hotel operations</small></a>'
+        f'<a class="brand" href="?home=1" target="_self" aria-label="Wavo">{welcome.WORDMARK}<small>Hotel operations</small></a>'
     )
 me = request("GET", "/me")
 guest = me["role"] == "guest"

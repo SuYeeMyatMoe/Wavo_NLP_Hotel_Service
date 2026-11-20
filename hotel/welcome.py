@@ -6,33 +6,27 @@ import hmac
 from hotel.demo_accounts import ACCOUNTS as DEMO_ACCOUNTS, GUESTS
 from hotel.vintage_ui import room
 
-BRAND = '<a class="hotel-mark" href="./" target="_self"><img class="wavo-icon" src="app/static/wavo-icon.png" alt=""><span class="wavo-wordmark">Wavo</span></a>'
+WORDMARK = '<span class="wavo-lockup" aria-hidden="true"><img src="app/static/wavo-w.png" alt=""><span>avo</span></span>'
+BRAND = f'<a class="hotel-mark" href="./" target="_self" aria-label="Wavo">{WORDMARK}</a>'
 
 
 def landing():
-    st.html(f"""<header class="public-nav public-nav--landing">
-        {BRAND}
-        <nav aria-label="Hotel navigation">
-          <a href="#hotel-services">Hotel services</a>
-          <a href="?login=staff" target="_self">Staff entrance</a>
-          <a class="nav-login" href="?login=guest" target="_self">Guest sign in</a>
-        </nav>
-        </header>""")
     with st.container(key="vintage_arrival"):
         room(entrance="?login=guest")
-    st.html(f"""<section class="service-shortcuts" id="hotel-services"><p class="hotel-overline">Hotel services</p><h2>How can we help?</h2>
+    st.html(f"""<section class="service-shortcuts" id="hotel-services">
+          <div data-wavo-reveal="0"><p class="hotel-overline">Hotel services</p><h2>How can we help?</h2></div>
           <div class="shortcut-grid">
-            <a href="?login=guest&amp;service=comfort" target="_self">{service_icon("bed")}<span>Room comfort</span></a>
-            <a href="?login=guest&amp;service=housekeeping" target="_self">{service_icon("sparkle")}<span>Housekeeping</span></a>
-            <a href="?login=guest&amp;service=wifi" target="_self">{service_icon("wifi")}<span>Wi-Fi help</span></a>
-            <a href="?login=guest&amp;service=special" target="_self">{service_icon("bell")}<span>Special requests</span></a>
+            <a data-wavo-reveal="1" href="?login=guest&amp;service=comfort" target="_self">{service_icon("bed")}<span>Room comfort</span></a>
+            <a data-wavo-reveal="2" href="?login=guest&amp;service=housekeeping" target="_self">{service_icon("sparkle")}<span>Housekeeping</span></a>
+            <a data-wavo-reveal="3" href="?login=guest&amp;service=wifi" target="_self">{service_icon("wifi")}<span>Wi-Fi help</span></a>
+            <a data-wavo-reveal="4" href="?login=guest&amp;service=special" target="_self">{service_icon("bell")}<span>Special requests</span></a>
           </div></section>
-        <section class="hotel-services"><div class="section-head"><div><p class="hotel-overline">Hotel services</p><h2>During your stay</h2></div></div>
+        <section class="hotel-services"><div class="section-head" data-wavo-reveal="0"><div><p class="hotel-overline">Hotel services</p><h2>During your stay</h2></div></div>
         <div class="service-images">
-          <a href="?login=guest&amp;service=comfort" target="_self"><img src="app/static/room-detail.jpg" alt="Guest room with a wood-panelled headboard" loading="lazy" decoding="async"><div><strong>In-room service</strong><span>Repairs and housekeeping</span><b>Request room service</b></div></a>
-          <a href="?login=guest" target="_self"><img src="app/static/reception.jpg" alt="Seating and warm lights in the hotel lobby" loading="lazy" decoding="async"><div><strong>Reception</strong><span>Hotel information and guest support</span><b>Contact reception</b></div></a>
+          <a data-wavo-reveal="1" href="?login=guest&amp;service=comfort" target="_self"><img src="app/static/room-detail.jpg" alt="Guest room with a wood-panelled headboard" loading="lazy" decoding="async"><div><strong>In-room service</strong><span>Repairs and housekeeping</span><b>Request room service</b></div></a>
+          <a data-wavo-reveal="2" href="?login=guest" target="_self"><img src="app/static/reception.jpg" alt="Seating and warm lights in the hotel lobby" loading="lazy" decoding="async"><div><strong>Reception</strong><span>Hotel information and guest support</span><b>Contact reception</b></div></a>
         </div></section>
-        <footer class="hotel-footer"><span class="wavo-wordmark">Wavo</span></footer>""")
+        <footer class="hotel-footer" data-wavo-reveal="0"><span role="img" aria-label="Wavo">{WORDMARK}</span></footer>""")
     st.stop()
 
 

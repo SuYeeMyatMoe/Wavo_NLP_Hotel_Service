@@ -76,11 +76,14 @@
   padding: 6px 16px;
 }
 .brand small, .hotel-overline { color: var(--gold); }
-.wavo-wordmark {
+.wavo-lockup {
+  display: inline-flex;
+  align-items: center;
   font: 600 2.2rem/.9 "Cormorant Garamond", Georgia, serif;
   letter-spacing: -.045em;
 }
-.hotel-mark .wavo-wordmark { font-size: clamp(2.05rem, 3vw, 2.75rem); }
+.wavo-lockup img { width: 1em; height: 1em; flex: none; }
+.hotel-mark .wavo-lockup { font-size: clamp(2.05rem, 3vw, 2.75rem); }
 [data-wavo-theme="light"] .public-nav :is(.nav-login, .hotel-mark) { color: var(--ink); }
 .stApp .st-key-nav { border-bottom: 1px solid var(--line); }
 .stApp [data-testid="stSegmentedControl"] button { border-color: var(--line); }
@@ -114,29 +117,15 @@
   overflow-x: hidden;
 }
 .public-nav, .hotel-footer { border-color: var(--line); }
-.public-nav--landing {
-  gap: 12px 24px;
-  margin-top: 14px;
-  padding: 8px clamp(12px, 2.3vw, 30px);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: linear-gradient(110deg, var(--masthead), var(--surface));
+@media (prefers-reduced-motion: no-preference) {
+  .stApp:has(.st-key-vintage_arrival) [data-testid="stMain"] { scroll-behavior: smooth; }
+  [data-wavo-revealed]:not(:focus-within) {
+    animation: wavo-reveal 560ms cubic-bezier(.22,.61,.36,1) var(--wavo-reveal-delay, 0ms) both;
+  }
 }
-.public-nav--landing nav { flex-wrap: wrap; justify-content: flex-end; gap: 4px clamp(12px, 2.4vw, 32px); }
-.public-nav--landing nav > a:first-child { display: inline-flex; }
-.public-nav--landing nav > a { white-space: nowrap; }
-.public-nav--landing .nav-login {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-ink);
-}
-.public-nav--landing .nav-login:hover,
-[data-wavo-theme="light"] .public-nav--landing .nav-login {
-  color: var(--accent-ink);
-}
-@media (max-width: 520px) {
-  .public-nav--landing { flex-wrap: wrap; justify-content: center; padding: 8px 10px; }
-  .public-nav--landing nav { flex: 1 1 100%; justify-content: center; }
+@keyframes wavo-reveal {
+  from { opacity: 0; translate: 0 20px; }
+  to { opacity: 1; translate: 0 0; }
 }
 .shortcut-grid a, .service-images a {
   color: var(--ink);

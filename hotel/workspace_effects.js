@@ -1,6 +1,34 @@
 const owner = Symbol.for("wavo.workspace.effects");
 const themeKey = "wavo.hotel.theme";
 
+function watchLanding(main) {
+  if (!main || !("IntersectionObserver" in window)) return () => {};
+  const selector = "[data-wavo-reveal]:not([data-wavo-revealed])";
+  const observed = new WeakSet();
+  const viewport = new IntersectionObserver((entries) => {
+    for (const { target, isIntersecting } of entries) {
+      if (!isIntersecting || !target.isConnected) continue;
+      viewport.unobserve(target);
+      target.style.setProperty("--wavo-reveal-delay", 85 * Number(target.dataset.wavoReveal) + "ms");
+      target.dataset.wavoRevealed = "";
+    }
+  }, { root: main, rootMargin: "0px 0px 32px 0px", threshold: .08 });
+  function observeNewContent() {
+    for (const element of main.querySelectorAll(selector)) {
+      if (observed.has(element)) continue;
+      observed.add(element);
+      viewport.observe(element);
+    }
+  }
+  const mutations = new MutationObserver(observeNewContent);
+  mutations.observe(main, { childList: true, subtree: true });
+  observeNewContent();
+  return () => {
+    mutations.disconnect();
+    viewport.disconnect();
+  };
+}
+
 export default function mount({ parentElement }) {
   const host = parentElement instanceof ShadowRoot ? parentElement.host : parentElement;
   const current = document[owner];
@@ -9,6 +37,7 @@ export default function mount({ parentElement }) {
 
   const root = document.documentElement;
   const main = document.querySelector('[data-testid="stMain"]');
+  const stopReveals = watchLanding(main);
   const viewport = new ResizeObserver(updateWorkspaceWidth);
   function updateWorkspaceWidth() {
     if (main?.clientWidth) main.style.setProperty("--wavo-workspace-width", main.clientWidth + "px");
@@ -87,6 +116,7 @@ export default function mount({ parentElement }) {
     window.removeEventListener("storage", syncTabs);
     document.removeEventListener("pointermove", move, true);
     viewport.disconnect();
+    stopReveals();
     layer.remove();
     particles.clear();
     if (document[owner]?.dispose === dispose) delete document[owner];

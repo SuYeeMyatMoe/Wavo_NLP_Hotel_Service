@@ -12,8 +12,10 @@ type MountArgs = {
 };
 
 function VintageRoom({
+  entrance,
   telephone,
 }: {
+  entrance?: string;
   telephone: () => void;
 }) {
   const [light, setLight] = useState(() => {
@@ -39,6 +41,19 @@ function VintageRoom({
       data-theme={light ? "light" : "dark"}
       aria-label="Wavo's interactive hotel room"
     >
+      {entrance && (
+        <header className="room-navigation">
+          <a className="room-brand" href="./" aria-label="Wavo">
+            <img src="app/static/wavo-w.png" alt="" />
+            <span aria-hidden="true">avo</span>
+          </a>
+          <nav aria-label="Hotel navigation">
+            <a href="#hotel-services">Hotel services</a>
+            <a href="?login=staff">Staff entrance</a>
+            <a className="room-guest-link" href={entrance}>Guest sign in</a>
+          </nav>
+        </header>
+      )}
       <PhotoRoom
         light={light}
         reduced={reduced}
@@ -73,6 +88,7 @@ export default function mount({
   }
   root.render(
     <VintageRoom
+      entrance={data.entrance}
       telephone={() => {
         if (data.entrance)
           window.location.assign(new URL(data.entrance, document.baseURI));
