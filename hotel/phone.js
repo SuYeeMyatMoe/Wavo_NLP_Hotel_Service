@@ -2,7 +2,7 @@
 export default function ({parentElement,data,setStateValue}) {
  const box=parentElement.querySelector('.call-avatar');
  if(box.liveState){box.liveState.data=data;box.liveState.emit=setStateValue;box.liveState.render();return box.liveState.dispose;}
- const $=s=>box.querySelector(s), start=$('.microphone'), end=$('.hangup'), status=$('small'), caption=$('.call-reply'), play=$('.play-reply');
+ const $=s=>box.querySelector(s), start=$('.microphone'), end=$('.hangup'), status=$('small'), caption=$('.call-reply'), play=$('.play-reply'), mascot=$('.mascot');
  const s=box.liveState={data,emit:setStateValue,generation:0,phase:'idle',room:null,stream:null,audio:[],muted:false,call:null,startKey:null,timers:[],metrics:{},blocked:false};
  const title=document.createElement('h2');title.textContent='AI reception';box.prepend(title);
  const roomLabel=document.createElement('p');roomLabel.className='call-room';title.after(roomLabel);
@@ -18,6 +18,10 @@ export default function ({parentElement,data,setStateValue}) {
  s.render=()=>{
    if(s.data.dismissedCall&&s.data.dismissedCall===s.completedCall&&!active()&&!s.ending){s.completedCall=null;s.phase='idle';s.message='';help.textContent='';}
    box.hidden=s.data.visible===false&&!active()&&!s.ending;
+   if(!box.hidden&&!s.mascotMounted&&typeof WavoMascot!=='undefined'){
+     s.mascotMounted=true;
+     requestAnimationFrame(()=>{if(mascot.isConnected)WavoMascot.mountMascot(mascot);});
+   }
    box.classList.toggle('live-launcher',Boolean(s.data.api));box.dataset.mode=s.phase;
    roomLabel.textContent=(s.call?.room||s.data.room)?'Room '+(s.call?.room||s.data.room):'';
    status.textContent=s.message||({idle:'Speak naturally. Wavo follows your language.',connecting:'Connecting…',waiting:'Waiting for AI…',listening:'Listening',speaking:'Wavo is speaking',thinking:'Checking with the hotel…',muted:'Microphone muted',reconnecting:'Reconnecting…',ended:'Call ended',error:'Call could not connect'})[s.phase];
@@ -148,6 +152,6 @@ export default function ({parentElement,data,setStateValue}) {
    }
  };
  end.onclick=()=>{if(active()||s.call||s.startKey)void finish();else{caption.textContent='';help.textContent='';show('idle');}};
- const mascot=$('.mascot');mascot.setAttribute('aria-label',s.data.mascot||'Make Wavo jump');
+ mascot.setAttribute('aria-label',s.data.mascot||'Make Wavo wink');
  s.render();return s.dispose;
 }

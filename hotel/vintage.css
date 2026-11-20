@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Cormorant Garamond";
+  src: url("app/static/cormorant-garamond-600.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+
 /* Wavo's vintage room palette, shared by every native Streamlit workspace. */
 :root {
   --ink: #f0dfc9;
@@ -14,11 +22,14 @@
   --control: #362319;
   --hover: #543522;
   --accent: #e0b476;
-  --accent-ink: #29170b;
+  --accent-hover: #f1c88d;
+  --accent-ink: #241409;
   --alert-ink: #f9cf9b;
   --alert-surface: #482d17;
   --danger-surface: #582b25;
   --danger-ink: #ffddd3;
+  --success-surface: #24372a;
+  --success-ink: #baebc7;
   --veil: #1b100bd9;
   --spark: #ffe8a4;
   --spark-glow: #ffc259;
@@ -26,25 +37,28 @@
 
 :root[data-wavo-theme="light"] {
   color-scheme: light;
-  --ink: #332116;
-  --navy: #332116;
-  --gold: #784517;
-  --muted: #624a39;
-  --line: #b28d68;
-  --paper: #faf1e4;
-  --surface: #fff8ec;
-  --brass: #996437;
-  --ambient: #efd4ae;
-  --masthead: #f6e4cb;
-  --raised: #f1dfc7;
-  --control: #f5e7d5;
-  --hover: #e7c8a0;
-  --accent: #825020;
-  --accent-ink: #fff8e9;
+  --ink: #2c1b0f;
+  --navy: #2c1b0f;
+  --gold: #683e1d;
+  --muted: #58412e;
+  --line: #a47d53;
+  --paper: #eed9b7;
+  --surface: #f6e6c9;
+  --brass: #87552d;
+  --ambient: #e2bf8c;
+  --masthead: #efd6af;
+  --raised: #edd4ad;
+  --control: #f2ddbb;
+  --hover: #e4c396;
+  --accent: #e2b985;
+  --accent-hover: #d9ac73;
+  --accent-ink: #2c1b0f;
   --alert-ink: #673908;
   --alert-surface: #f7e3c5;
   --danger-surface: #f5d9cf;
   --danger-ink: #732f25;
+  --success-surface: #e2e8c9;
+  --success-ink: #294832;
   --veil: #f4e7d4d9;
   --spark: #b36723;
   --spark-glow: #db912d;
@@ -62,6 +76,12 @@
   padding: 6px 16px;
 }
 .brand small, .hotel-overline { color: var(--gold); }
+.wavo-wordmark {
+  font: 600 2.2rem/.9 "Cormorant Garamond", Georgia, serif;
+  letter-spacing: -.045em;
+}
+.hotel-mark .wavo-wordmark { font-size: clamp(2.05rem, 3vw, 2.75rem); }
+[data-wavo-theme="light"] .public-nav :is(.nav-login, .hotel-mark) { color: var(--ink); }
 .stApp .st-key-nav { border-bottom: 1px solid var(--line); }
 .stApp [data-testid="stSegmentedControl"] button { border-color: var(--line); }
 .stApp [data-testid="stForm"], .stApp [data-testid="stVerticalBlockBorderWrapper"] {
@@ -82,15 +102,17 @@
 }
 .stApp .result small, .stApp .datum small { color: var(--muted); }
 
-.stApp .st-key-vintage_arrival {
-  width: 100vw;
+.stApp :is(.st-key-vintage_arrival, .st-key-guest_vintage_room) {
+  width: var(--wavo-workspace-width, 100vw);
   max-width: none;
-  margin-inline: calc(50% - 50vw);
+  margin-inline: calc(50% - var(--wavo-workspace-width, 100vw) / 2);
   background: #170c05;
 }
-[data-wavo-theme="light"] .stApp .st-key-vintage_arrival { background: var(--raised); }
+[data-wavo-theme="light"] .stApp :is(.st-key-vintage_arrival, .st-key-guest_vintage_room) { background: var(--raised); }
 .stApp:has(.st-key-vintage_arrival) .block-container { padding-top: 0; }
-.stApp:has(.st-key-vintage_arrival) [data-testid="stMainBlockContainer"] { overflow-x: clip; }
+.stApp:has(:is(.st-key-vintage_arrival, .st-key-guest_vintage_room)) [data-testid="stMain"] {
+  overflow-x: hidden;
+}
 .public-nav, .hotel-footer { border-color: var(--line); }
 .shortcut-grid a, .service-images a {
   color: var(--ink);
@@ -112,12 +134,25 @@
 .login-photo { border: 1px solid var(--line); }
 .stApp .st-key-guest_welcome,
 .stApp .st-key-call_screen,
-.stApp .st-key-post_call_receipt,
+.st-key-post_call_receipt,
 .stApp .st-key-home_progress {
   background: linear-gradient(135deg, var(--raised), var(--surface)) !important;
   border: 1px solid var(--line) !important;
   color: var(--ink);
 }
+[role="dialog"]:has(.st-key-post_call_receipt) {
+  background: var(--paper);
+  color: var(--ink);
+}
+.st-key-post_call_receipt :is(h3, p, summary, button) { color: var(--ink); }
+.st-key-post_call_receipt [data-testid="stCaptionContainer"] { color: var(--muted); opacity: 1; }
+.st-key-post_call_receipt [data-testid="stCaptionContainer"] p { color: inherit; }
+.st-key-post_call_receipt :is(details, [data-testid="stAlertContainer"]) {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.st-key-post_call_receipt [data-testid="stAlertContainer"] { color: var(--alert-ink); background: var(--alert-surface); }
+.st-key-post_call_receipt [data-testid="stAlertContainer"] p { color: inherit; }
 .stApp .wavo-loading { background: var(--veil); }
 .stApp .wavo-loading-card {
   background: var(--surface);
@@ -195,16 +230,16 @@
   background: var(--hover);
   color: var(--ink);
 }
-[data-wavo-theme="light"] :is(.stApp, [role="dialog"], .react-aria-Popover) :is(button[data-testid="stBaseButton-primary"], button[data-testid="stBaseButton-primaryFormSubmit"], a[data-testid="stBaseLinkButton-primary"]) {
+:is(.stApp, [role="dialog"], .react-aria-Popover) :is(button[kind="primary"], button[kind="primaryFormSubmit"], a[data-testid="stBaseLinkButton-primary"]) {
   background: var(--accent);
   color: var(--accent-ink);
   border-color: var(--accent);
 }
-[data-wavo-theme="light"] :is(.stApp, [role="dialog"], .react-aria-Popover) :is(button[data-testid="stBaseButton-primary"], button[data-testid="stBaseButton-primaryFormSubmit"], a[data-testid="stBaseLinkButton-primary"]):hover {
-  background: color-mix(in srgb, var(--accent) 87%, #241408);
+:is(.stApp, [role="dialog"], .react-aria-Popover) :is(button[kind="primary"], button[kind="primaryFormSubmit"], a[data-testid="stBaseLinkButton-primary"]):not(:disabled):hover {
+  background: var(--accent-hover);
   color: var(--accent-ink);
 }
-[data-wavo-theme="light"] :is(.stApp, [role="dialog"], .react-aria-Popover) :is(button[data-testid="stBaseButton-primary"], button[data-testid="stBaseButton-primaryFormSubmit"], a[data-testid="stBaseLinkButton-primary"]) p {
+:is(.stApp, [role="dialog"], .react-aria-Popover) :is(button[kind="primary"], button[kind="primaryFormSubmit"], a[data-testid="stBaseLinkButton-primary"]) :is(p, span) {
   color: inherit;
 }
 [data-wavo-theme="light"] button[data-variant="segmented_control"][aria-checked="true"] {
@@ -217,7 +252,7 @@
   background: var(--alert-surface);
 }
 [data-wavo-theme="light"] :is([data-testid="stDataFrame"], [data-testid="stVegaLiteChart"]) canvas {
-  filter: invert(.94) sepia(.13) saturate(.8) hue-rotate(351deg);
+  filter: invert(.94) sepia(.29) saturate(.83) hue-rotate(349deg);
 }
 [data-wavo-theme="light"] [data-testid="stVegaLiteChart"] svg text { fill: var(--ink); }
 [data-wavo-theme="light"] [data-testid="stVegaLiteChart"] svg > rect { fill: var(--paper); }

@@ -8,18 +8,24 @@ export default function mount({ parentElement }) {
   current?.dispose();
 
   const root = document.documentElement;
+  const main = document.querySelector('[data-testid="stMain"]');
+  const viewport = new ResizeObserver(updateWorkspaceWidth);
+  function updateWorkspaceWidth() {
+    if (main?.clientWidth) main.style.setProperty("--wavo-workspace-width", main.clientWidth + "px");
+  }
+  if (main) {
+    updateWorkspaceWidth();
+    viewport.observe(main);
+  }
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   const layer = document.createElement("div");
   layer.className = "cursor-embers";
   layer.setAttribute("aria-hidden", "true");
   document.body.append(layer);
   const particles = new Set();
-  const jumps = new WeakMap();
-  const depth = new WeakMap();
   let last = 0;
   let lastX = -100;
   let lastY = -100;
-  let hoveredMascot;
 
   function applyTheme(theme) {
     root.dataset.wavoTheme = theme === "light" ? "light" : "dark";
@@ -63,39 +69,8 @@ export default function mount({ parentElement }) {
     animation.oncancel = clear;
   }
 
-  function getMascot(event) {
-    return event.composedPath().find(
-      (node) => node instanceof Element && node.hasAttribute("data-wavo-mascot"),
-    );
-  }
-
-  function tiltMascot(mascot, pitch, yaw) {
-    if (!depth.has(mascot)) {
-      const image = mascot.querySelector(".wavo-mascot-actor img");
-      if (image?.complete) depth.set(mascot, createMascotDepth(mascot));
-    }
-    const model = depth.get(mascot);
-    if (model) {
-      model.tilt(pitch, yaw);
-    } else {
-      mascot.style.setProperty("--mascot-tilt-x", pitch + "rad");
-      mascot.style.setProperty("--mascot-tilt-y", yaw + "rad");
-    }
-  }
-
   function move(event) {
     if (reduced.matches || event.pointerType === "touch") return;
-    const mascot = getMascot(event);
-    if (hoveredMascot && hoveredMascot !== mascot) {
-      tiltMascot(hoveredMascot, 0, 0);
-    }
-    hoveredMascot = mascot;
-    if (mascot) {
-      const bounds = mascot.getBoundingClientRect();
-      const x = (event.clientX - bounds.left) / bounds.width - .5;
-      const y = (event.clientY - bounds.top) / bounds.height - .5;
-      tiltMascot(mascot, -y * .55, x * .74);
-    }
     const now = performance.now();
     const dx = event.clientX - lastX;
     const dy = event.clientY - lastY;
@@ -107,37 +82,11 @@ export default function mount({ parentElement }) {
     spark(lastX + 12, lastY + 12, 13 - Math.random() * 22, -25, 460);
   }
 
-  function jump(event) {
-    if (reduced.matches) return;
-    const mascot = getMascot(event);
-    const actor = mascot?.querySelector(".wavo-mascot-actor");
-    if (!actor) return;
-    tiltMascot(mascot, 0, 0);
-    jumps.get(actor)?.cancel();
-    const animation = actor.animate([
-      { translate: "0 0", scale: "1" },
-      { translate: "0 5px", scale: "1.08 .91", offset: .14 },
-      { translate: "0 -35px", scale: ".98 1.04", offset: .48 },
-      { translate: "0 0", scale: "1.06 .95", offset: .8 },
-      { translate: "0 0", scale: "1" },
-    ], { duration: 690, easing: "ease-in-out" });
-    jumps.set(actor, animation);
-    mascot.setAttribute("data-jumping", "");
-    animation.onfinish = animation.oncancel = () => {
-      if (jumps.get(actor) === animation) mascot.removeAttribute("data-jumping");
-    };
-    const { x, y, width, height } = mascot.getBoundingClientRect();
-    for (let i = 0; i < 9; i++) {
-      const angle = i * Math.PI * 2 / 9;
-      spark(x + width / 2, y + height * .6, Math.cos(angle) * 92, Math.sin(angle) * 67 - 19, 620 + i * 21, i % 3 === 0);
-    }
-  }
-
   function dispose() {
     window.removeEventListener("wavo:set-theme", updateTheme);
     window.removeEventListener("storage", syncTabs);
     document.removeEventListener("pointermove", move, true);
-    document.removeEventListener("click", jump, true);
+    viewport.disconnect();
     layer.remove();
     particles.clear();
     if (document[owner]?.dispose === dispose) delete document[owner];
@@ -151,6 +100,5 @@ export default function mount({ parentElement }) {
   window.addEventListener("storage", syncTabs);
   applyTheme(root.dataset.wavoTheme || themeFromStorage());
   document.addEventListener("pointermove", move, { capture: true, passive: true });
-  document.addEventListener("click", jump, true);
   return cleanup;
 }

@@ -13,7 +13,7 @@ def ticket_pdf(t):
         pdf.multi_cell(0, 7, safe, new_x="LMARGIN", new_y="NEXT")
 
     pdf.image(
-        str(Path(__file__).resolve().parents[1] / "static/wavo-brass-mark.png"),
+        str(Path(__file__).resolve().parents[1] / "static/wavo-icon.png"),
         x=10,
         y=9,
         w=11,

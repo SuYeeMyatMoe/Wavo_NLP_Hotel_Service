@@ -58,6 +58,7 @@ export default function({parentElement,data,setTriggerValue,setStateValue}) {
     button.setAttribute("aria-pressed",String(!!state.muted));
   };
   const mascot=box.querySelector(".mascot");
+  if(typeof WavoMascot!=="undefined")WavoMascot.mountMascot(mascot);
   mascot.setAttribute("aria-label",data.replay);
   mascot.title=data.replay;
   mascot.onclick=()=>{

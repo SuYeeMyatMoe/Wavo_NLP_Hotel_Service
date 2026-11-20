@@ -4,7 +4,7 @@ import { useReducedMotion } from "motion/react";
 import { PhotoRoom } from "./PhotoRoom";
 import "./room.css";
 
-type RoomData = { entrance?: string; compact?: boolean };
+type RoomData = { entrance?: string };
 type MountArgs = {
   parentElement: HTMLElement | ShadowRoot;
   data: RoomData;
@@ -12,10 +12,8 @@ type MountArgs = {
 };
 
 function VintageRoom({
-  compact,
   telephone,
 }: {
-  compact?: boolean;
   telephone: () => void;
 }) {
   const [light, setLight] = useState(() => {
@@ -37,7 +35,7 @@ function VintageRoom({
   const reduced = Boolean(useReducedMotion());
   return (
     <section
-      className={`photo-experience${compact ? " compact-room" : ""}`}
+      className="photo-experience"
       data-theme={light ? "light" : "dark"}
       aria-label="Wavo's interactive hotel room"
     >
@@ -75,7 +73,6 @@ export default function mount({
   }
   root.render(
     <VintageRoom
-      compact={data.compact}
       telephone={() => {
         if (data.entrance)
           window.location.assign(new URL(data.entrance, document.baseURI));

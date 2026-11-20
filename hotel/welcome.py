@@ -6,7 +6,7 @@ import hmac
 from hotel.demo_accounts import ACCOUNTS as DEMO_ACCOUNTS, GUESTS
 from hotel.vintage_ui import room
 
-BRAND = '<a class="hotel-mark" href="./" target="_self"><img class="wavo-icon" src="app/static/wavo-brass-mark.png" alt=""> Wavo</a>'
+BRAND = '<a class="hotel-mark" href="./" target="_self"><img class="wavo-icon" src="app/static/wavo-icon.png" alt=""><span class="wavo-wordmark">Wavo</span></a>'
 
 
 def landing():
@@ -26,7 +26,7 @@ def landing():
           <a href="?login=guest&amp;service=comfort" target="_self"><img src="app/static/room-detail.jpg" alt="Guest room with a wood-panelled headboard" loading="lazy" decoding="async"><div><strong>In-room service</strong><span>Repairs and housekeeping</span><b>Request room service ↗</b></div></a>
           <a href="?login=guest" target="_self"><img src="app/static/reception.jpg" alt="Seating and warm lights in the hotel lobby" loading="lazy" decoding="async"><div><strong>Reception</strong><span>Hotel information and guest support</span><b>Contact reception ↗</b></div></a>
         </div></section>
-        <footer class="hotel-footer"><span>Wavo</span><a href="?login=staff" target="_self">Staff sign in ↗</a></footer>""")
+        <footer class="hotel-footer"><span class="wavo-wordmark">Wavo</span><a href="?login=staff" target="_self">Staff sign in ↗</a></footer>""")
     st.stop()
 
 

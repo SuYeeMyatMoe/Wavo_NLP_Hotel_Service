@@ -34212,12 +34212,11 @@ function W2({ light: o, reduced: e, onToggle: a, onPhone: s }) {
   ) });
 }
 function j2({
-  compact: o,
-  telephone: e
+  telephone: o
 }) {
-  const [a, s] = Zn.useState(() => {
-    const c = document.documentElement.dataset.wavoTheme;
-    if (c) return c === "light";
+  const [e, a] = Zn.useState(() => {
+    const u = document.documentElement.dataset.wavoTheme;
+    if (u) return u === "light";
     try {
       return localStorage.getItem("wavo.hotel.theme") === "light";
     } catch {
@@ -34225,32 +34224,32 @@ function j2({
     }
   });
   Zn.useEffect(() => {
-    function c() {
-      s(document.documentElement.dataset.wavoTheme === "light");
+    function u() {
+      a(document.documentElement.dataset.wavoTheme === "light");
     }
-    return window.addEventListener("wavo:theme-changed", c), () => window.removeEventListener("wavo:theme-changed", c);
+    return window.addEventListener("wavo:theme-changed", u), () => window.removeEventListener("wavo:theme-changed", u);
   }, []);
-  const u = !!CM();
+  const s = !!CM();
   return /* @__PURE__ */ De.jsxs(
     "section",
     {
-      className: `photo-experience${o ? " compact-room" : ""}`,
-      "data-theme": a ? "light" : "dark",
+      className: "photo-experience",
+      "data-theme": e ? "light" : "dark",
       "aria-label": "Wavo's interactive hotel room",
       children: [
         /* @__PURE__ */ De.jsx(
           W2,
           {
-            light: a,
-            reduced: u,
+            light: e,
+            reduced: s,
             onToggle: () => {
-              const c = a ? "dark" : "light";
-              document.documentElement.dataset.wavoTheme = c, s(!a), window.dispatchEvent(new CustomEvent("wavo:set-theme", { detail: c }));
+              const u = e ? "dark" : "light";
+              document.documentElement.dataset.wavoTheme = u, a(!e), window.dispatchEvent(new CustomEvent("wavo:set-theme", { detail: u }));
             },
-            onPhone: e
+            onPhone: o
           }
         ),
-        /* @__PURE__ */ De.jsx("p", { className: "sr-only", role: "status", children: a ? "The lamp is on." : "The lamp is off." })
+        /* @__PURE__ */ De.jsx("p", { className: "sr-only", role: "status", children: e ? "The lamp is on." : "The lamp is off." })
       ]
     }
   );
@@ -34268,7 +34267,6 @@ function Z2({
     /* @__PURE__ */ De.jsx(
       j2,
       {
-        compact: e.compact,
         telephone: () => {
           e.entrance ? window.location.assign(new URL(e.entrance, document.baseURI)) : a("telephone", !0);
         }

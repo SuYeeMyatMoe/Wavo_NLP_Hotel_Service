@@ -15,13 +15,12 @@ ROOT = Path(__file__).resolve().parent
 st.set_page_config(
     page_title="Wavo | Hotel operations",
     layout="wide",
-    page_icon=str(ROOT / "static/wavo-brass-mark.png"),
+    page_icon=str(ROOT / "static/wavo-favicon.png"),
 )
 st.html(ROOT / "hotel/ui.css")
 st.html(ROOT / "hotel/hotel.css")
 st.html(ROOT / "hotel/vintage.css")
-st.html(ROOT / "hotel/mascot.css")
-from hotel.vintage_ui import room as vintage_room, workspace_effects
+from hotel.vintage_ui import guest_concierge, room as vintage_room, workspace_effects
 
 workspace_effects()
 loading_slot = st.empty()
@@ -855,10 +854,7 @@ def guest_home():
                 [1, 1.3], vertical_alignment="center", gap="large"
             )
             with mascot:
-                st.html(
-                    '<button type="button" class="guest-mascot" data-wavo-mascot aria-label="Make Wavo jump">'
-                    '<span class="wavo-mascot-actor"><img src="app/static/wavo-concierge-cutout.png" alt="" draggable="false"></span></button>'
-                )
+                guest_concierge()
             with action:
                 st.caption(tr("Room") + " " + me["room"])
                 st.title(tr("AI reception"))
@@ -1049,7 +1045,7 @@ with st.container(key="masthead"):
     brand, account = st.columns([3, 1])
 with brand:
     st.html(
-        '<a class="brand" href="?home=1" target="_self"><img class="wavo-icon" src="app/static/wavo-brass-mark.png" alt="">Wavo<small>Hotel operations</small></a>'
+        '<a class="brand" href="?home=1" target="_self"><img class="wavo-icon" src="app/static/wavo-icon.png" alt=""><span class="wavo-wordmark">Wavo</span><small>Hotel operations</small></a>'
     )
 me = request("GET", "/me")
 guest = me["role"] == "guest"
