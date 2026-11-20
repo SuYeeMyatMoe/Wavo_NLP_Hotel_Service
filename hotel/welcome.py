@@ -10,28 +10,37 @@ BRAND = '<a class="hotel-mark" href="./" target="_self"><img class="wavo-icon" s
 
 
 def landing():
+    st.html(f"""<header class="public-nav public-nav--landing">
+        {BRAND}
+        <nav aria-label="Hotel navigation">
+          <a href="#hotel-services">Hotel services</a>
+          <a href="?login=staff" target="_self">Staff entrance</a>
+          <a class="nav-login" href="?login=guest" target="_self">Guest sign in</a>
+        </nav>
+        </header>""")
     with st.container(key="vintage_arrival"):
         room(entrance="?login=guest")
-    st.html(f"""<header class="public-nav">{BRAND}<nav><a href="#hotel-services">Hotel services</a>
-        <a href="?login=staff" target="_self">Staff entrance</a><a class="nav-login" href="?login=guest" target="_self">Guest sign in ↗</a></nav></header>
-        <section class="service-shortcuts" id="hotel-services"><p class="hotel-overline">Hotel services</p><h2>How can we help?</h2>
+    st.html(f"""<section class="service-shortcuts" id="hotel-services"><p class="hotel-overline">Hotel services</p><h2>How can we help?</h2>
           <div class="shortcut-grid">
-            <a href="?login=guest&amp;service=comfort" target="_self"><span aria-hidden="true">{service_icon("bed")}</span>Room comfort<span aria-hidden="true">→</span></a>
-            <a href="?login=guest&amp;service=housekeeping" target="_self"><span aria-hidden="true">{service_icon("sparkle")}</span>Housekeeping<span aria-hidden="true">→</span></a>
-            <a href="?login=guest&amp;service=wifi" target="_self"><span aria-hidden="true">{service_icon("wifi")}</span>Wi-Fi help<span aria-hidden="true">→</span></a>
-            <a href="?login=guest&amp;service=special" target="_self"><span aria-hidden="true">{service_icon("bell")}</span>Special requests<span aria-hidden="true">→</span></a>
+            <a href="?login=guest&amp;service=comfort" target="_self">{service_icon("bed")}<span>Room comfort</span></a>
+            <a href="?login=guest&amp;service=housekeeping" target="_self">{service_icon("sparkle")}<span>Housekeeping</span></a>
+            <a href="?login=guest&amp;service=wifi" target="_self">{service_icon("wifi")}<span>Wi-Fi help</span></a>
+            <a href="?login=guest&amp;service=special" target="_self">{service_icon("bell")}<span>Special requests</span></a>
           </div></section>
-        <section class="hotel-services"><div class="section-head"><div><p class="hotel-overline">Hotel services</p><h2>During your stay</h2></div><a class="nav-login" href="?login=guest" target="_self">Guest sign in ↗</a></div>
+        <section class="hotel-services"><div class="section-head"><div><p class="hotel-overline">Hotel services</p><h2>During your stay</h2></div></div>
         <div class="service-images">
-          <a href="?login=guest&amp;service=comfort" target="_self"><img src="app/static/room-detail.jpg" alt="Guest room with a wood-panelled headboard" loading="lazy" decoding="async"><div><strong>In-room service</strong><span>Repairs and housekeeping</span><b>Request room service ↗</b></div></a>
-          <a href="?login=guest" target="_self"><img src="app/static/reception.jpg" alt="Seating and warm lights in the hotel lobby" loading="lazy" decoding="async"><div><strong>Reception</strong><span>Hotel information and guest support</span><b>Contact reception ↗</b></div></a>
+          <a href="?login=guest&amp;service=comfort" target="_self"><img src="app/static/room-detail.jpg" alt="Guest room with a wood-panelled headboard" loading="lazy" decoding="async"><div><strong>In-room service</strong><span>Repairs and housekeeping</span><b>Request room service</b></div></a>
+          <a href="?login=guest" target="_self"><img src="app/static/reception.jpg" alt="Seating and warm lights in the hotel lobby" loading="lazy" decoding="async"><div><strong>Reception</strong><span>Hotel information and guest support</span><b>Contact reception</b></div></a>
         </div></section>
-        <footer class="hotel-footer"><span class="wavo-wordmark">Wavo</span><a href="?login=staff" target="_self">Staff sign in ↗</a></footer>""")
+        <footer class="hotel-footer"><span class="wavo-wordmark">Wavo</span></footer>""")
     st.stop()
 
 
 def service_icon(name):
-    return f'<img src="app/static/service-{name}.svg" alt="" width="37" height="37">'
+    return (
+        f'<span class="service-icon" aria-hidden="true" '
+        f'style="--service-icon:url(app/static/service-{name}.svg)"></span>'
+    )
 
 
 def fill_demo_account(role):

@@ -1,7 +1,7 @@
 import {
   CanvasTexture, CatmullRomCurve3, Color, CylinderGeometry, ExtrudeGeometry,
-  Group, Mesh, MeshPhysicalMaterial, RepeatWrapping, Shape, SphereGeometry,
-  SRGBColorSpace, TorusGeometry, TubeGeometry, Vector3,
+  Group, LatheGeometry, Mesh, MeshPhysicalMaterial, RepeatWrapping, Shape, SphereGeometry,
+  SRGBColorSpace, TorusGeometry, TubeGeometry, Vector2, Vector3,
   type BufferGeometry, type Material,
 } from "three";
 
@@ -45,23 +45,22 @@ export function createConcierge() {
     return material;
   }
 
-  const bronze = alloy("#b17b3b", .75, .34, true);
-  const gold = alloy("#e5ad5e", .79, .25);
-  const edge = alloy("#a76330", .79, .34, true);
-  const dark = alloy("#59371d", .63, .39, true);
-  const rubber = alloy("#2a1c13", .15, .5);
-  const black = alloy("#23120a", .1, .25);
-  const copper = alloy("#bd7743", .78, .27);
-  const amber = alloy("#ffa331", .28, .26);
-  amber.emissive.set("#ff8209");
-  amber.emissiveIntensity = .57;
-  amber.clearcoat = 1;
-  const pupil = alloy("#5e2a0d", .25, .33);
-  const glint = alloy("#ffe2af", .03, .2);
-  glint.emissive.set("#ffb864");
-  glint.emissiveIntensity = .72;
-  const mouthInside = alloy("#351807", .21, .52);
-  const tongue = alloy("#ad5c34", .24, .49);
+  const bronze = alloy("#a77750", .81, .37, true);
+  const trim = alloy("#c18b5e", .79, .3, true);
+  const etching = alloy("#69442e", .75, .45);
+  const patina = alloy("#66432f", .73, .37, true);
+  const brass = alloy("#b78c62", .8, .3);
+  const cloth = alloy("#252224", .03, .91, true);
+  cloth.clearcoat = 0;
+  const lapel = alloy("#181719", .07, .69);
+  lapel.clearcoat = 0;
+  const shirt = alloy("#ebddc8", .02, .78);
+  const leather = alloy("#2b211e", .3, .29, true);
+  const sole = alloy("#30241d", .28, .49);
+  const eyesBlack = alloy("#160f0d", .25, .16);
+  eyesBlack.clearcoat = .85;
+  const mouthInside = alloy("#20100b", .08, .58);
+  const tongue = alloy("#813d29", .17, .54);
 
   function part(parent: Group, geometry: BufferGeometry, material: Material, [x, y, z]: Point = [0, 0, 0]) {
     geometries.add(geometry);
@@ -92,142 +91,209 @@ export function createConcierge() {
     return child;
   }
 
-  const shell = group(root, [0, .17, 0]);
-  ball(shell, bronze, [0, 0, 0], [1.04, .98, .86]);
-  const waist = ring(shell, edge, [0, -.54, 0], .846, .034);
-  waist.rotation.x = Math.PI / 2;
-  waist.scale.y = .85;
-  const upperSeam = ring(shell, dark, [0, .56, 0], .849, .021);
-  upperSeam.rotation.x = Math.PI / 2;
-  upperSeam.scale.y = .83;
-  const cap = cylinder(shell, dark, [0, .925, 0], .25, .33, .061);
-  cap.scale.z = .83;
-  ball(shell, gold, [0, .973, 0], [.23, .044, .18]);
-  ball(shell, bronze, [0, 1.055, 0], [.107, .107, .107]);
-  ball(shell, gold, [-.019, 1.096, .039], [.029, .018, .016]);
+  const depth = .81;
+  const crown: [number, number][] = [
+    [0, -.421], [1.119, -.421], [1.15, -.401], [1.167, -.362],
+    [1.171, -.294], [1.17, -.175], [1.159, -.01], [1.132, .169],
+    [1.086, .34], [1.025, .488], [.965, .581], [.883, .668],
+    [.774, .761], [.659, .828], [.522, .887], [.366, .926],
+    [.235, .945], [0, .948],
+  ];
 
-  // The inset face and rear service hatch are different solid surfaces.
-  ball(shell, dark, [0, .035, .507], [.846, .797, .253]);
-  ball(shell, gold, [0, .033, .526], [.812, .757, .265]);
-  ball(shell, bronze, [0, .031, .555], [.784, .73, .258]);
-  const hatch = group(shell, [0, -.02, -.714]);
-  hatch.rotation.y = Math.PI;
-  ball(hatch, dark, [0, 0, 0], [.533, .539, .17]);
-  ring(hatch, gold, [0, 0, .101], .447, .019);
-  ring(hatch, edge, [0, 0, .144], .365, .021);
-  ball(hatch, rubber, [0, 0, .141], [.328, .328, .043]);
-  for (let row = -4; row <= 4; row++) {
-    const y = row * .057;
-    const half = Math.sqrt(.296 ** 2 - y * y);
-    tube(hatch, row % 2 === 0 ? gold : edge, [[-half, y, .184], [0, y + .009, .195], [half, y, .184]], .012);
+  function lathe(parent: Group, material: Material, profile: [number, number][]) {
+    const mesh = part(parent, new LatheGeometry(profile.map(([r, y]) => new Vector2(r, y)), 72), material);
+    mesh.scale.z = depth;
+    return mesh;
   }
-  for (let index = 0; index < 10; index++) {
-    const angle = index * Math.PI / 5;
-    const x = Math.sin(angle) * .486, y = Math.cos(angle) * .486;
-    ball(hatch, gold, [x, y, .102], [.024, .024, .015]);
-    tube(hatch, dark, [[x - .011, y - .006, .117], [x + .011, y + .006, .117]], .0028);
+
+  function band(parent: Group, material: Material, radius: number, y: number, size: number, scaleZ = depth) {
+    const rim = ring(parent, material, [0, y, 0], radius, size);
+    rim.rotation.x = Math.PI / 2;
+    rim.scale.y = scaleZ;
+    return rim;
+  }
+
+  function bodyRadius(y: number) {
+    const index = crown.findIndex(([, height]) => height > y);
+    const [inner, low] = crown[index - 1];
+    const [outer, high] = crown[index];
+    return inner + (outer - inner) * (y - low) / (high - low);
+  }
+
+  function scroll(center: number, height: number, direction: number, width: number, rise: number) {
+    const points: Point[] = [];
+    for (let index = 0; index <= 24; index++) {
+      const progress = index / 24;
+      const radius = 1 - progress * .92;
+      const turn = progress * Math.PI * 2.45 - .7;
+      const theta = center + direction * width * radius * Math.cos(turn);
+      const y = height + rise * radius * Math.sin(turn);
+      const body = bodyRadius(y) + .012;
+      points.push([body * Math.sin(theta), y, body * depth * Math.cos(theta)]);
+    }
+    tube(root, etching, points, .016);
+    const highlight = points.map(([x, y, z]): Point => [x * 1.009, y + .009, z * 1.009]);
+    tube(root, trim, highlight, .007);
+  }
+
+  lathe(root, bronze, crown);
+  band(root, patina, .974, .566, .027);
+  band(root, trim, .995, .551, .026);
+  band(root, brass, 1.016, .515, .016);
+  band(root, patina, 1.139, -.39, .025);
+  for (let index = 0; index < 6; index++) {
+    const center = index * Math.PI / 3;
+    scroll(center + .185, .727, 1, .257, .097);
+    scroll(center - .185, .727, -1, .257, .097);
+  }
+  for (const side of [-1, 1]) {
+    scroll(side * .77, -.251, side, .178, .115);
+    scroll(side * .947, -.139, -side, .108, .21);
+  }
+
+  const plungerBase = cylinder(root, bronze, [0, .965, 0], .20, .232, .06);
+  plungerBase.scale.z = .92;
+  band(root, trim, .212, .992, .017, .93);
+  cylinder(root, bronze, [0, 1.045, 0], .112, .142, .123);
+  cylinder(root, patina, [0, 1.173, 0], .062, .063, .162);
+  cylinder(root, trim, [0, 1.245, 0], .096, .074, .055);
+  ball(root, patina, [0, 1.279, 0], [.224, .04, .204]);
+  ball(root, bronze, [0, 1.309, 0], [.225, .054, .205]);
+  band(root, trim, .210, 1.299, .011, .90);
+
+  // A separate cloth body runs all the way around the bell.
+  lathe(root, cloth, [
+    [0, -.825], [1.20, -.825], [1.238, -.795], [1.241, -.759],
+    [1.206, -.688], [1.175, -.607], [1.15, -.495], [1.131, -.385], [0, -.385],
+  ]);
+  lathe(root, bronze, [[0, -.848], [1.205, -.848], [1.245, -.823], [1.251, -.781], [1.242, -.755], [0, -.754]]);
+  band(root, brass, 1.245, -.78, .012);
+
+  function tailoring(material: Material, points: [number, number][], lift = .025) {
+    const shape = new Shape(points.map(([x, y]) => new Vector2(x, y)));
+    shape.closePath();
+    const geometry = new ExtrudeGeometry(shape, {
+      depth: .01, bevelEnabled: true, bevelSegments: 2, steps: 1,
+      bevelSize: .009, bevelThickness: .007,
+    });
+    const position = geometry.attributes.position;
+    for (let index = 0; index < position.count; index++) {
+      const x = position.getX(index);
+      const y = position.getY(index);
+      const radius = 1.14 + .25 * (-y - .39);
+      position.setZ(index, depth * Math.sqrt(radius * radius - x * x) + lift + position.getZ(index));
+    }
+    geometry.computeVertexNormals();
+    part(root, geometry, material);
+  }
+
+  tailoring(shirt, [[-.463, -.397], [0, -.406], [.463, -.397], [.263, -.526], [0, -.635], [-.263, -.526]], .031);
+  for (const side of [-1, 1]) {
+    tailoring(cloth, [[side * .02, -.761], [side * .637, -.692], [side * .438, -.789], [side * .15, -.918]], .065);
+    tailoring(lapel, [[side * .507, -.409], [side * .428, -.532], [side * .003, -.637], [side * .287, -.489]], .05);
+    tailoring(lapel, [[side * .041, -.46], [side * .206, -.421], [side * .206, -.561], [side * .045, -.511]], .091);
+  }
+  ball(root, lapel, [0, -.486, 1.069], [.059, .057, .047]);
+  ball(root, brass, [0, -.585, .993], [.017, .017, .011]);
+  ball(root, trim, [0, -.679, 1.005], [.032, .032, .021]);
+  ball(root, trim, [0, -.759, 1.023], [.031, .031, .021]);
+  tube(root, lapel, [[.359, -.66, .96], [.505, -.645, .91], [.621, -.623, .851]], .017);
+
+  // The back has a jacket seam and a discreet inset service plate.
+  tube(root, lapel, [[0, -.414, -.925], [0, -.571, -.956], [0, -.734, -.994]], .01);
+  const hatch = group(root, [0, -.068, -.919]);
+  hatch.rotation.y = Math.PI;
+  ball(hatch, patina, [0, 0, 0], [.207, .148, .037]);
+  const rim = ring(hatch, trim, [0, 0, .025], .173, .009);
+  rim.scale.y = .70;
+  for (const y of [-.048, 0, .048]) {
+    tube(hatch, etching, [[-.101, y, .032], [0, y, .045], [.101, y, .032]], .012);
   }
 
   const eyes = [-1, 1].map((side) => {
-    const eye = group(shell, [side * .33, .18, .77]);
-    eye.rotation.y = side * .12;
-    ball(eye, dark, [0, 0, 0], [.254, .238, .085]);
-    const trim = ring(eye, gold, [0, 0, .069], .21, .022);
-    trim.scale.y = .9;
-    const inset = ring(eye, copper, [0, 0, .092], .184, .012);
-    inset.scale.y = .9;
-    ball(eye, black, [0, 0, .08], [.193, .171, .042]);
-    const aperture = group(eye, [0, 0, .113]);
-    ball(aperture, amber, [0, 0, 0], [.162, .149, .059]);
-    ball(aperture, pupil, [0, -.006, .049], [.076, .093, .036]);
-    ball(aperture, glint, [-.046, .069, .068], [.033, .024, .009]);
-    ball(aperture, glint, [.04, -.056, .058], [.012, .012, .006]);
-    const lid = ball(eye, bronze, [0, 0, .124], [.181, .157, .04]);
-    const brow = group(eye, [0, .28, -.014]);
-    tube(brow, gold, [[-.146, -.012, 0], [-.047, .052, .017], [.052, .051, .017], [.132, .011, -.003]], .021);
+    const eye = group(root, [side * .386, .043, .884]);
+    eye.rotation.y = side * .24;
+    ball(eye, patina, [0, 0, -.006], [.102, .15, .025]);
+    const aperture = ball(eye, eyesBlack, [0, 0, .013], [.093, .137, .042]);
+    const lid = ball(eye, bronze, [0, 0, .039], [.097, .141, .022]);
+    const brow = group(eye, [0, .265, -.033]);
+    tube(brow, etching, [
+      [-.104, side * .035 - .023, -.014], [-.049, .035, .012],
+      [.041, .035, .018], [.101, -side * .035 - .019, 0],
+    ], .018);
     return { aperture, lid, brow };
   });
 
-  const mouth = group(shell, [0, -.225, .81]);
-  const smile = new Shape();
-  smile.moveTo(-.207, .035);
-  smile.quadraticCurveTo(0, -.025, .207, .035);
-  smile.quadraticCurveTo(.18, -.11, .037, -.137);
-  smile.quadraticCurveTo(-.126, -.15, -.207, .035);
-  part(mouth, new ExtrudeGeometry(smile, {
-    depth: .015, bevelEnabled: true, bevelSegments: 3, steps: 1,
-    bevelSize: .012, bevelThickness: .007, curveSegments: 28,
+  const mouth = group(root, [0, -.209, .949]);
+  const smileShape = new Shape();
+  smileShape.moveTo(-.171, .026);
+  smileShape.quadraticCurveTo(0, -.026, .171, .026);
+  smileShape.quadraticCurveTo(.116, -.112, .003, -.101);
+  smileShape.quadraticCurveTo(-.124, -.103, -.171, .026);
+  part(mouth, new ExtrudeGeometry(smileShape, {
+    depth: .014, bevelEnabled: true, bevelSegments: 3, steps: 1,
+    bevelSize: .008, bevelThickness: .004, curveSegments: 24,
   }), mouthInside);
-  tube(mouth, gold, [[-.209, .026, .009], [-.127, -.088, .027], [.004, -.138, .03], [.138, -.082, .025], [.207, .03, .009]], .008);
-  const lowerLip = ball(mouth, tongue, [0, -.1, .027], [.065, .021, .007]);
+  tube(mouth, brass, [[-.164, .02, .022], [-.093, -.065, .021], [0, -.105, .023], [.093, -.065, .021], [.164, .02, .022]], .007);
+  const lowerLip = ball(mouth, tongue, [0, -.07, .024], [.059, .017, .005]);
 
-  const feet = [-1, 1].map((side) => {
-    const ear = group(shell, [side * .96, -.015, 0]);
-    ear.rotation.y = side * Math.PI / 2;
-    ball(ear, dark, [0, 0, .038], [.335, .335, .17]);
-    ball(ear, gold, [0, 0, .135], [.283, .283, .151]);
-    ring(ear, edge, [0, 0, .236], .213, .028);
-    ball(ear, bronze, [0, 0, .244], [.187, .187, .095]);
-    ring(ear, gold, [0, 0, .307], .11, .017);
-    ball(ear, dark, [0, 0, .311], [.074, .074, .035]);
-    for (let tooth = 0; tooth < 16; tooth++) {
-      const angle = tooth * Math.PI / 8;
-      ball(ear, gold, [Math.sin(angle) * .24, Math.cos(angle) * .24, .216], [.018, .018, .024]);
+  const limbs = [-1, 1].map((side) => {
+    const axle = group(root, [side * 1.146, -.137, -.008]);
+    axle.rotation.y = side * Math.PI / 2;
+    ball(axle, patina, [0, 0, .02], [.231, .235, .093]);
+    ring(axle, trim, [0, 0, .076], .194, .022);
+    for (let index = 0; index < 18; index++) {
+      const angle = index * Math.PI / 9;
+      ball(axle, bronze, [Math.sin(angle) * .201, Math.cos(angle) * .201, .089], [.016, .016, .037]);
     }
-    tube(shell, copper, [
-      [side * .98, .31, -.133], [side * 1.277, .225, -.234],
-      [side * 1.269, -.169, -.273], [side * 1.071, -.48, -.28],
-      [side * .753, -.551, -.449], [side * .57, -.386, -.616],
-    ], .041);
-    tube(shell, dark, [
-      [side * .999, -.24, .292], [side * 1.086, -.436, .365],
-      [side * .948, -.636, .396], [side * .682, -.692, .43],
-    ], .024);
-    ball(shell, gold, [side * .668, -.684, .43], [.049, .049, .049]);
-    tube(shell, gold, [
-      [side * .064, .63, .691], [side * .225, .65, .683],
-      [side * .418, .593, .664], [side * .497, .499, .664],
-    ], .012);
-    tube(shell, edge, [
-      [side * .034, -.574, .609], [side * .219, -.546, .67],
-      [side * .463, -.47, .677], [side * .59, -.389, .648],
-    ], .014);
-    ball(shell, gold, [side * .604, -.374, .648], [.025, .025, .025]);
-    ball(shell, gold, [side * .708, .006, .65], [.027, .027, .029]);
 
-    const hip = group(root, [side * .353, -.605, -.025]);
-    hip.rotation.z = side * .045;
-    ball(hip, dark, [0, -.091, 0], [.192, .153, .173]);
-    cylinder(hip, copper, [0, -.206, 0], .106, .125, .192);
-    ring(hip, gold, [0, -.184, 0], .111, .017).rotation.x = Math.PI / 2;
-    const ankle = group(hip, [0, -.282, .012]);
-    ball(ankle, edge, [0, -.008, 0], [.152, .124, .143]);
-    ball(ankle, rubber, [0, -.245, .104], [.273, .066, .36]);
-    ball(ankle, dark, [0, -.203, .107], [.266, .083, .352]);
-    ball(ankle, bronze, [0, -.157, .127], [.245, .135, .327]);
-    ball(ankle, gold, [0, -.168, .25], [.217, .107, .205]);
-    tube(ankle, edge, [[-.184, -.17, .248], [-.13, -.083, .272], [0, -.068, .285], [.13, -.083, .272], [.184, -.17, .248]], .01);
-    ball(ankle, gold, [side * .205, -.088, .013], [.043, .038, .043]);
-    return { hip, ankle };
+    const arm = group(root, [side * 1.272, -.155, -.008]);
+    ball(arm, bronze, [0, 0, 0], [.133, .132, .127]);
+    cylinder(arm, bronze, [0, -.199, 0], .079, .069, .288);
+    const elbow = group(arm, [0, -.355, .004]);
+    ball(elbow, patina, [0, 0, 0], [.101, .105, .092]);
+    cylinder(elbow, bronze, [0, -.164, .007], .087, .074, .237);
+    ball(elbow, trim, [0, -.285, .012], [.078, .061, .073]);
+    const hand = group(elbow, [0, -.353, .039]);
+    ball(hand, bronze, [0, 0, 0], [.075, .084, .052]);
+    for (const finger of [-1, 0, 1]) {
+      const x = finger * .032;
+      tube(hand, bronze, [[x, -.05, .016], [x, -.11, .043], [x - side * .016, -.145 + Math.abs(finger) * .011, .077]], .016);
+    }
+    tube(hand, trim, [[-side * .051, -.015, .004], [-side * .078, -.054, .042], [-side * .064, -.078, .067]], .021);
+
+    const hip = group(root, [side * .379, -.798, -.02]);
+    cylinder(hip, patina, [0, -.145, 0], .079, .061, .278);
+    const ankle = group(hip, [0, -.248, .012]);
+    cylinder(ankle, bronze, [0, -.007, 0], .153, .138, .049);
+    ball(ankle, leather, [0, -.114, .015], [.153, .147, .153]);
+    ball(ankle, sole, [0, -.244, .105], [.256, .053, .293]);
+    ball(ankle, bronze, [0, -.218, .106], [.251, .054, .284]);
+    ball(ankle, leather, [0, -.172, .147], [.239, .115, .253]);
+    tube(ankle, patina, [[-.174, -.19, .23], [-.116, -.09, .224], [0, -.061, .223], [.119, -.09, .216], [.175, -.19, .229]], .007);
+    return { side, arm, elbow, hip, ankle };
   });
 
   function pose(leftOpen: number, rightOpen: number, talking: number, smile: number, step: number, stride: number) {
     for (const [index, openness] of [leftOpen, rightOpen].entries()) {
       const eye = eyes[index];
-      eye.aperture.scale.y = Math.max(.038, openness);
-      eye.lid.scale.y = .157 * Math.max(.004, 1 - openness);
-      eye.lid.position.y = .142 * openness;
-      eye.brow.position.y = .28 + .043 * (1 - openness) + .025 * smile;
+      eye.aperture.scale.y = .137 * Math.max(.055, openness);
+      eye.lid.scale.y = .141 * Math.max(.005, 1 - openness);
+      eye.lid.position.y = .123 * openness;
+      eye.brow.position.y = .265 + .035 * (1 - openness) + .021 * smile;
     }
-    mouth.scale.set(1 + .14 * smile - .1 * talking, .78 + .86 * talking + .19 * smile, 1);
+    mouth.scale.set(1 + .11 * smile - .14 * talking, .81 + .91 * talking + .19 * smile, 1);
     lowerLip.visible = talking > .27;
-    feet.forEach(({ hip, ankle }, index) => {
+    limbs.forEach(({ side, arm, elbow, hip, ankle }, index) => {
       const swing = Math.sin(step + index * Math.PI) * stride;
-      hip.position.y = -.605 + Math.max(0, swing) * .102;
+      arm.rotation.set(-swing * .16, 0, side * (.32 + .025 * smile));
+      elbow.rotation.set(-.14 - Math.max(0, -swing) * .21, 0, -side * .065);
+      hip.position.y = -.798 + Math.max(0, swing) * .104;
       hip.rotation.x = swing * .23;
       ankle.rotation.x = swing * -.19;
     });
   }
+  pose(1, 1, 0, 0, 0, 0);
 
   return {
     root,

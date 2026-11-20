@@ -114,11 +114,55 @@
   overflow-x: hidden;
 }
 .public-nav, .hotel-footer { border-color: var(--line); }
+.public-nav--landing {
+  gap: 12px 24px;
+  margin-top: 14px;
+  padding: 8px clamp(12px, 2.3vw, 30px);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: linear-gradient(110deg, var(--masthead), var(--surface));
+}
+.public-nav--landing nav { flex-wrap: wrap; justify-content: flex-end; gap: 4px clamp(12px, 2.4vw, 32px); }
+.public-nav--landing nav > a:first-child { display: inline-flex; }
+.public-nav--landing nav > a { white-space: nowrap; }
+.public-nav--landing .nav-login {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.public-nav--landing .nav-login:hover,
+[data-wavo-theme="light"] .public-nav--landing .nav-login {
+  color: var(--accent-ink);
+}
+@media (max-width: 520px) {
+  .public-nav--landing { flex-wrap: wrap; justify-content: center; padding: 8px 10px; }
+  .public-nav--landing nav { flex: 1 1 100%; justify-content: center; }
+}
 .shortcut-grid a, .service-images a {
   color: var(--ink);
   background: var(--control);
   border-color: var(--line);
 }
+.shortcut-grid a {
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  min-height: 115px;
+  text-align: center;
+}
+.shortcut-grid a > .service-icon {
+  width: 35px;
+  height: 35px;
+  background: #f3dec0;
+  mask: var(--service-icon) center / contain no-repeat;
+}
+[data-wavo-theme="light"] .shortcut-grid .service-icon { background: var(--gold); }
+.shortcut-grid a > span:last-child {
+  margin: 0;
+  color: var(--ink);
+  font-size: inherit;
+}
+.service-images a div { justify-items: center; text-align: center; }
 .shortcut-grid a:hover, .shortcut-grid a:focus-visible { background: var(--hover); }
 .service-images a {
   transition: background-color .24s ease, border-color .24s ease, box-shadow .24s ease, transform .24s ease;

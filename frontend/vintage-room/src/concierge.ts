@@ -35,9 +35,9 @@ export function mountMascot(element: HTMLElement | null) {
   const rim = new DirectionalLight("#ffb873", 1.26);
   rim.position.set(3, 2, -4);
   scene.add(fill, key, rim);
-  const camera = new PerspectiveCamera(32, 1, .1, 16);
-  camera.position.set(0, .20, 5.5);
-  camera.lookAt(0, .045, 0);
+  const camera = new PerspectiveCamera(34, 1, .1, 16);
+  camera.position.set(0, .16, 5.85);
+  camera.lookAt(0, .035, 0);
 
   const model = createConcierge();
   scene.add(model.root);
@@ -54,7 +54,7 @@ export function mountMascot(element: HTMLElement | null) {
   let frame = 0;
   let disposed = false;
   let lastFrame = 0;
-  let yaw = -.18, desiredYaw = yaw;
+  let yaw = -.105, desiredYaw = yaw;
   let pitch = 0, desiredPitch = 0;
   let winkAt = -100;
   let strollAt = -100;
