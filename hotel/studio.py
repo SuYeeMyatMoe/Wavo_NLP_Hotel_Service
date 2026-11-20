@@ -3,6 +3,7 @@
 import json
 import pandas as pd
 import streamlit as st
+from hotel.metric_ui import metric
 from hotel.ui_copy import words
 from hotel.ui_client import request
 
@@ -17,8 +18,8 @@ def context(a):
     intent = a.get("intent", {})
     sentiment = a.get("sentiment", {})
     with st.container(horizontal=True):
-        st.metric("Intent", words(intent.get("label", "Not recorded")).title())
-        st.metric("Sentiment", sentiment.get("label", "Not recorded").title())
+        metric("Intent", words(intent.get("label", "Not recorded")).title())
+        metric("Sentiment", sentiment.get("label", "Not recorded").title())
     if intent.get("ambiguous"):
         st.info(intent["question"])
     with st.expander("Context and sentiment evidence"):
@@ -57,9 +58,9 @@ def evaluation():
     )
     report = selected["report"]
     with st.container(horizontal=True):
-        st.metric("Accuracy", f"{selected['accuracy']:.3f}")
-        st.metric("Macro F1", f"{report['macro avg']['f1-score']:.3f}")
-        st.metric("Weighted F1", f"{report['weighted avg']['f1-score']:.3f}")
+        metric("Accuracy", f"{selected['accuracy']:.3f}")
+        metric("Macro F1", f"{report['macro avg']['f1-score']:.3f}")
+        metric("Weighted F1", f"{report['weighted avg']['f1-score']:.3f}")
     st.caption("Deployed classifier · " + t["champion"] + " · " + r["version"])
     st.dataframe(
         pd.DataFrame(

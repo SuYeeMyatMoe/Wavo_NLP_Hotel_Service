@@ -1,6 +1,7 @@
 """Hotel-wide assignment overview using the existing authorized ticket queue."""
 
 import streamlit as st
+from hotel.metric_ui import metric
 from hotel.ui_copy import words
 
 from hotel.issue_labels import problem_label
@@ -121,7 +122,7 @@ def overview(jump):
     st.caption("Open requests across all departments.")
     with st.container(horizontal=True, key="dashboard_summary"):
         for label, value in counts(rows).items():
-            st.metric(label, value, border=True)
+            metric(label, value)
 
     st.subheader("Find and open a task")
     saved = st.session_state.get("admin_filters", {})

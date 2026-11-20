@@ -91,11 +91,11 @@ def test_staff_insights_and_single_call_history(tmp_path, monkeypatch):
     app.session_state.destination = "Insights"
     app.run()
     assert not app.exception
-    assert any(m.label == "Need attention" for m in app.metric)
+    assert any('aria-label="Need attention"' in m.value for m in app.get("html"))
     view = next(w for w in app.get("button_group") if w.key == "analytics_view")
     view.set_value("Trends").run()
     assert not app.exception
-    assert any(m.label == "Confirmed resolution" for m in app.metric)
+    assert any('aria-label="Confirmed resolution"' in m.value for m in app.get("html"))
     assert app.selectbox(key="insights_period").value == 30
     app.session_state.destination = "Calls"
     app.run()

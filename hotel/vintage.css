@@ -407,6 +407,64 @@
   backdrop-filter: var(--glass-filter);
 }
 .stApp [data-testid="stMetric"] { padding: .8rem; }
+.stApp .wavo-metric {
+  margin: 0;
+  padding: .8rem;
+  min-width: 0;
+  color: var(--ink);
+  font-family: var(--wavo-body);
+  border: 1px solid var(--glass-line);
+  border-radius: 16px;
+  background: var(--glass-panel);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-filter);
+}
+.stApp .wavo-metric dt {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .4rem;
+  margin-bottom: .5rem;
+  font-size: .875rem;
+  font-weight: 400;
+  line-height: 1.6;
+}
+.stApp .wavo-metric dd {
+  margin: 0;
+  font-size: 2.25rem;
+  font-weight: 400;
+  line-height: normal;
+  overflow-wrap: anywhere;
+}
+.stApp .wavo-metric-help { flex: 0 0 auto; }
+.stApp .wavo-metric-help summary {
+  list-style: none;
+  cursor: help;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: .15rem;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  text-align: center;
+  font-size: .75rem;
+  line-height: 1rem;
+}
+.stApp .wavo-metric-help summary::-webkit-details-marker { display: none; }
+.stApp .wavo-metric-help summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+.stApp .wavo-metric-tooltip {
+  position: absolute;
+  z-index: 10;
+  inset-inline: 0;
+  top: calc(100% + .35rem);
+  padding: .6rem;
+  border: 1px solid var(--line);
+  border-radius: .5rem;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--glass-shadow);
+  overflow-wrap: anywhere;
+}
 .stApp .st-key-wavo_workspace_effects { display: none; }
 .cursor-embers {
   position: fixed; inset: 0; z-index: 2147483647;

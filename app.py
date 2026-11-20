@@ -32,6 +32,7 @@ load_dotenv(ROOT / ".env")
 S = st.session_state
 from hotel.readiness import enabled as wake_enabled, begin_wake, wait_for_ready
 from hotel.ui_readiness import browser_hint
+from hotel.metric_ui import metric
 
 api_url = os.getenv("HOTEL_API_URL", "").rstrip("/")
 if (
@@ -471,7 +472,8 @@ def service_context(t):
     work = t["work"]
     ex = work["extraction"]
     cols = st.columns(2)
-    cols[0].metric("Priority", t["urgency"])
+    with cols[0]:
+        metric("Priority", t["urgency"])
     cols[1].caption("Assigned team")
     cols[1].write("**" + t["department"] + "**")
     st.caption(

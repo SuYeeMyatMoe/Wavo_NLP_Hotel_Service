@@ -136,11 +136,11 @@ def test_supervisor_overview_navigation_filters_and_permissions(tmp_path, monkey
     ui.run()
     assert not ui.exception
     assert ui.session_state.nav == "All tasks"
-    assert next(m.value for m in ui.metric if m.label == "Open tasks") == "3"
+    assert '<dd>3</dd>' in next(m.value for m in ui.get("html") if 'aria-label="Open tasks"' in m.value)
     ui.selectbox(key="admin_department").select("Maintenance").run()
     table = next(d.value for d in ui.dataframe if "Main problem" in d.value.columns)
     assert len(table) == 1 and table.iloc[0]["Department"] == "Maintenance"
-    assert next(m.value for m in ui.metric if m.label == "Open tasks") == "3"
+    assert '<dd>3</dd>' in next(m.value for m in ui.get("html") if 'aria-label="Open tasks"' in m.value)
     ui.run()  # timer-equivalent rerender must retain filters
     assert ui.selectbox(key="admin_department").value == "Maintenance"
     ui.session_state.admin_open_ref = refs[0]

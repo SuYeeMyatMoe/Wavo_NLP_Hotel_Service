@@ -3,6 +3,7 @@
 import altair as alt
 import pandas as pd
 import streamlit as st
+from hotel.metric_ui import metric
 from hotel.ui_copy import words
 from hotel.ui_client import request
 
@@ -42,28 +43,24 @@ def current_work(data, jump):
     c = data["current"]
     known_targets = data["unresolved"] - c["awaiting_guest"] - c["missing_deadlines"]
     with st.container(horizontal=True, key="analytics_summary"):
-        st.metric(
+        metric(
             "Open requests",
             data["unresolved"],
-            border=True,
             help="All unresolved requests you are authorized to see, regardless of the selected performance period.",
         )
-        st.metric(
+        metric(
             "Need attention",
             c["attention"],
-            border=True,
             help="Distinct requests needing human review, assignment, overdue work or guest confirmation; reasons can overlap.",
         )
-        st.metric(
+        metric(
             "Past service target",
             c["overdue_service"] if known_targets else "—",
-            border=True,
             help=f"{known_targets} open requests have a recorded service deadline; {c['missing_deadlines']} have none. Requests awaiting confirmation are excluded.",
         )
-        st.metric(
+        metric(
             "Awaiting guest",
             c["awaiting_guest"],
-            border=True,
             help="Work reported complete by staff stays open until the guest confirms.",
         )
 
@@ -167,28 +164,24 @@ def trends(data):
     total = data["tickets"]
     minutes = data["median_resolution_minutes"]
     with st.container(horizontal=True, key="analytics_outcomes"):
-        st.metric(
+        metric(
             "Confirmed resolution",
             f"{100 * data['confirmation_rate']:.0f}%" if total else "—",
-            border=True,
             help=f"{data['confirmed']} currently closed requests with explicit confirmation out of {total} requests opened in this period.",
         )
-        st.metric(
+        metric(
             "Typical resolution",
             f"{minutes:.0f} min" if minutes is not None else "—",
-            border=True,
             help=f"Median time from opening the request to final confirmation. Sample: {data['resolution_sample']} confirmed requests opened in the selected period.",
         )
-        st.metric(
+        metric(
             "Needed another attempt",
             data["reopened"],
-            border=True,
             help=f"Distinct requests opened in this period that a guest rejected or reopened at least once; denominator {total}.",
         )
-        st.metric(
+        metric(
             "Calls resolved without a task",
             data["calls"]["self_service"],
-            border=True,
             help=f"Of {data['calls']['ended']} ended inbound calls opened in this period, these recorded resolution confirmed by the guest, no service task and no staff join. Not an estimate of money or time saved.",
         )
     st.caption(
