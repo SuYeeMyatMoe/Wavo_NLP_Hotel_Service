@@ -5,6 +5,8 @@ from contextlib import contextmanager, nullcontext
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
+from time import perf_counter
+from hotel.latency import database_elapsed, database_batch
 
 from dotenv import load_dotenv
 
@@ -35,9 +37,13 @@ class DB:
         self.connection, self.pg = connection, pg
 
     def run(self, query, args=()):
-        return self.connection.execute(
-            query.replace("?", "%s") if self.pg else query, args
-        )
+        started = perf_counter()
+        try:
+            return self.connection.execute(
+                query.replace("?", "%s") if self.pg else query, args
+            )
+        finally:
+            database_elapsed(started)
 
     def one(self, query, args=()):
         row = self.run(query, args).fetchone()
@@ -46,9 +52,12 @@ class DB:
     def all(self, query, args=()):
         return [dict(r) for r in self.run(query, args).fetchall()]
 
+    @contextmanager
     def batch(self):
         """Batch dependent-order writes whose results are not needed until exit."""
-        return self.connection.pipeline() if self.pg else nullcontext()
+        with database_batch():
+            with self.connection.pipeline() if self.pg else nullcontext():
+                yield
 
 
 @contextmanager
@@ -69,7 +78,7 @@ def transaction(actor=None):
         if pg:
             # Send setup together instead of three cloud round trips. SET LOCAL
             # and the actor GUC are reverted by commit/rollback before reuse.
-            with conn.pipeline():
+            with db.batch():
                 db.run("SET LOCAL search_path TO hotel, public")
                 if actor:
                     db.run("SET LOCAL ROLE hotel_app")
@@ -119,7 +128,11 @@ def transaction(actor=None):
             operations.seed(db)
             operations.migrate_preview(db)
         yield db
-        conn.commit()
+        started = perf_counter()
+        try:
+            conn.commit()
+        finally:
+            database_elapsed(started, query=False)
     except BaseException:
         conn.rollback()
         raise

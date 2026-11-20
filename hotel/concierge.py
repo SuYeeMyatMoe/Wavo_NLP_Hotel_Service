@@ -8,7 +8,8 @@ from hotel.knowledge import retrieve
 from hotel import case_notes
 from hotel.procedures import select as select_procedure
 from hotel.nlp import analyze
-from hotel.service_consent import service_consent
+from hotel.service_consent import normalize_reply, service_consent
+from hotel.latency import measure
 
 ACTIVE = {"Connected", "Connecting", "Ringing"}
 HANDOFF = {"Waiting for reception", "Speaking with reception"}
@@ -20,11 +21,13 @@ GREETINGS = {
     "my": "မင်္ဂလာပါ။ Wavo မှ ကြိုဆိုပါတယ်။ ကျွန်ုပ်က သင့်ရဲ့ AI ဧည့်ကြိုဝန်ထမ်းပါ။ ဘာကူညီပေးရမလဲ။",
 }
 STAFF_REQUEST = re.compile(
-    r"\b(human|real person|refund|manager|talk to (?:someone|reception)|speak (?:to|with) (?:someone|a person|reception|staff))\b",
+    r"\b(?:(?:talk|speak) (?:to|with) (?:a |the )?(?:human|real person|person|someone|reception|staff|manager)"
+    r"|(?:call|connect|transfer)(?: me)? (?:to )?(?:a |the )?(?:human|real person|reception|manager)"
+    r"|(?:want|need|request) (?:a |the )?(?:human|real person|manager))\b"
+    r"|^(?:a )?(?:human|real person|manager)(?: please)?[.!?]*$",
     re.I,
 )
 WIFI = re.compile(r"\b(wi[\s-]?fi|internet|wireless|network)\b", re.I)
-AC = re.compile(r"\b(ac|a/c|air[\s-]?con(?:ditioner|ditioning)?|cooling)\b", re.I)
 YES = re.compile(
     r"^(yes|yeah|yep|okay|ok|sure|please do|go ahead|send (?:them|someone|maintenance)|that worked|it work(?:s|ed)|i(?:'m| am) (?:online|connected)|connected now)\b",
     re.I,
@@ -35,6 +38,11 @@ MOVE = re.compile(
 )
 NEG = re.compile(
     r"\b(no|not|never|don't|do not|didn't|cannot|can't|still|isn't|wasn't|wouldn't)\b",
+    re.I,
+)
+ACKNOWLEDGEMENT = re.compile(
+    r"(?:ok|okay|yes|yeah|sure|thanks|thank you|got it|understood)"
+    r"(?:[,.!\s]+(?:ok|okay|thanks|thank you))*[.!\s]*$",
     re.I,
 )
 
@@ -110,6 +118,7 @@ def save(db, n, **changes):
         (*changes.values(), store.now(), n["id"]),
     )
     n.update(changes)
+    n["version"] += 1
 
 
 def dispatch(db, n, analysis, department=None):
@@ -127,13 +136,48 @@ def dispatch(db, n, analysis, department=None):
     )
     if department:
         analysis["department"] = department
-    item = store.create(db, guest, analysis, n["id"], "Voice", n["room"])
+    with measure("dispatch", call=n["id"]):
+        item = store.create(db, guest, analysis, n["id"], "Voice", n["room"])
     db.run("UPDATE calls SET ticket=? WHERE id=?", (item["id"], n["id"]))
     n["ticket"] = item["id"]
     return item["id"]
 
 
-def handoff(db, n, analysis, reason):
+def human_requested(text):
+    # A refusal to call reception is not an invitation to join the call.
+    text = text.replace("’", "'")
+    for sentence in re.split(r"[.!?;]", text):
+        match = STAFF_REQUEST.search(sentence.strip())
+        if match and not re.search(
+            r"\b(?:don't|do not|no need to|not to|never)\b",
+            sentence.strip()[: match.end()],
+            re.I,
+        ):
+            return True
+    return False
+
+
+def followup_reply(db, n):
+    owner = db.one(
+        "SELECT r.name,t.analysis,t.status FROM task_assignments a JOIN staff_roster r ON r.staff=a.staff "
+        "JOIN tickets t ON t.id=a.ticket "
+        "WHERE a.ticket=? AND a.active=1",
+        (n["ticket"],),
+    )
+    if owner and json.loads(owner["analysis"]).get("service_mode") == "service":
+        return (
+            f"Reception follow-up is recorded. Your service request {n['ticket']} "
+            f"remains with {owner['name']} ({owner['status']})."
+        )
+    contact = (
+        f"{owner['name']} is coordinating the next step."
+        if owner
+        else "Reception needs to coordinate the next step; a staff assignment is not confirmed yet."
+    )
+    return f"Your request {n['ticket']} is recorded. {contact} No repair visit or arrival time is confirmed yet."
+
+
+def handoff(db, n, analysis, reason, *, live=False):
     analysis = {**analysis, "reception_followup": True}
     ref = dispatch(db, n, analysis, "Front Desk")
     if n["outcome"] not in HANDOFF:
@@ -141,8 +185,13 @@ def handoff(db, n, analysis, reason):
     save(
         db,
         n,
-        outcome="Waiting for reception",
-        reply="I have asked reception to join. Your summary is with them. Please stay on the call.",
+        outcome="Waiting for reception" if live else "Reception follow-up",
+        eta=None,
+        reply=(
+            "I have asked reception to join. Your summary is with them. Please stay on the call."
+            if live
+            else followup_reply(db, n)
+        ),
     )
 
 
@@ -168,6 +217,8 @@ def decide(state):
     text = state["english"].strip()
     previous = json.loads(n["analysis"])
     existing = n["outcome"]
+    wants_human = human_requested(text)
+    acknowledgement = bool(ACKNOWLEDGEMENT.fullmatch(normalize_reply(text)))
     consent = service_consent(text) if existing == "Service offered" else None
     prior_ex = previous.get("extraction", {})
     constraints = {c["constraint"]: c for c in prior_ex.get("constraints", [])}
@@ -195,13 +246,29 @@ def decide(state):
         )
         return {}
     if (
-        existing != "Clarification needed"
+        existing == "Reception follow-up"
+        and not wants_human
+        and a["urgency"] != "Critical"
+    ):
+        save(db, n, reply=followup_reply(db, n))
+        return {}
+    if (
+        existing
+        not in {
+            "Clarification needed",
+            "Service offered",
+            "Task assigned",
+            "ETA changed",
+            "Awaiting Wi-Fi confirmation",
+            "Guidance offered",
+        }
+        and not (existing == "Resolved by guest" and acknowledgement)
         and consent is None
         and a["intent"]["ambiguous"]
         and not a["issues"]
         and not a["extraction"]["constraints"]
         and a["urgency"] != "Critical"
-        and not STAFF_REQUEST.search(text)
+        and not wants_human
     ):
         save(db, n, reply=a["intent"]["question"])
         return {}
@@ -210,6 +277,7 @@ def decide(state):
         and all(i["state"] in {"resolved", "denied"} for i in a["issues"])
         and not n["ticket"]
         and a["urgency"] != "Critical"
+        and not wants_human
     ):
         save(
             db,
@@ -227,7 +295,7 @@ def decide(state):
         if existing == "Service offered"
         else bool(YES.search(text)) and not NEG.search(text)
     )
-    if a["urgency"] == "Critical" or STAFF_REQUEST.search(text):
+    if a["urgency"] == "Critical" or wants_human:
         if (
             a["urgency"] == "Critical"
             and n["ticket"]
@@ -253,7 +321,13 @@ def decide(state):
         if not previous or a["urgency"] == "Critical":
             save(db, n, issue=state["original"], analysis=json.dumps(a))
             previous = a
-        handoff(db, n, previous, "Reception or safety assistance requested")
+        handoff(
+            db,
+            n,
+            previous,
+            "Reception or safety assistance requested",
+            live=wants_human or existing in HANDOFF,
+        )
     elif existing == "Clarification needed":
         pending = previous.get("pending_question") or {
             "field": "Access permission needs clarification"
@@ -344,9 +418,9 @@ def decide(state):
                 save(
                     db,
                     n,
-                    outcome="Waiting for reception",
+                    outcome="Reception follow-up",
                     eta=None,
-                    reply=f"Your request {ref} is with reception to coordinate the next step. No repair visit or arrival time is confirmed yet.",
+                    reply=followup_reply(db, n),
                 )
                 return {}
             department = routed["department"]
@@ -364,7 +438,7 @@ def decide(state):
             save(
                 db,
                 n,
-                reply="Would you like me to send the team, or would you prefer to speak with reception?",
+                reply=f"Shall I send {previous['department']} to room {n['room']}?",
             )
         elif existing == "ETA changed" and agreed:
             save(
@@ -373,14 +447,20 @@ def decide(state):
                 outcome="Task assigned",
                 reply="Your service request remains open. I have recorded that you will wait.",
             )
+        elif acknowledgement:
+            save(
+                db,
+                n,
+                reply="You're welcome. You can track your request in My requests.",
+            )
         else:
             save(
                 db,
                 n,
                 reply="Your request is with the team. You can ask for reception if you need another option.",
             )
-    elif existing == "Resolved by guest" and agreed:
-        pass
+    elif existing == "Resolved by guest" and (agreed or acknowledgement):
+        save(db, n, reply="You're welcome. Let me know if you need anything else.")
     else:
         # The note records the original. Model features refer to the English working text.
         save(db, n, issue=state["original"], analysis=json.dumps(a))
@@ -398,7 +478,12 @@ def decide(state):
         elif WIFI.search(text):
             handoff(db, n, a, "No approved Wi-Fi instructions are available.")
         else:
-            department = "Maintenance" if AC.search(text) else a["department"]
+            department = (
+                solution["procedures"][0]["department"]
+                if solution["procedures"]
+                else a["department"]
+            )
+            a = {**a, "department": department}
             if solution["questions"]:
                 a["pending_question"] = solution["questions"][0]
                 save(
@@ -448,7 +533,32 @@ def decide(state):
     return {}
 
 
-def process_turn(db, guest, key, turn_id, original, english, language=None):
+class StaleTurn(Exception):
+    def __init__(self, case):
+        self.case = case
+
+
+def classify_turn(case, original, english, language=None):
+    # Pure analysis runs without a database connection or conversation lock.
+    snapshot = dict(case)
+    if language:
+        snapshot["language"] = language
+    with measure("classification", call=case["id"]):
+        return classify({"case": snapshot, "original": original, "english": english})
+
+
+def process_turn(
+    db,
+    guest,
+    key,
+    turn_id,
+    original,
+    english,
+    language=None,
+    *,
+    prepared=None,
+    version=None,
+):
     n = note(db, key, lock=True)
     if not store.active(guest) or guest["id"] != n["guest"]:
         raise PermissionError("Guest call unavailable.")
@@ -458,17 +568,18 @@ def process_turn(db, guest, key, turn_id, original, english, language=None):
         "INSERT INTO concierge_turns VALUES(?,?) ON CONFLICT DO NOTHING", (key, turn_id)
     ).rowcount:
         return n
+    if prepared is not None and n["version"] != version:
+        # Raising rolls back the turn claim as well as releasing the lock.
+        raise StaleTurn(n)
     if language and language != n["language"]:
         save(db, n, language=language)
     result = {"db": db, "case": n, "original": original, "english": english}
-    result.update(classify(result))
+    result.update(prepared if prepared is not None else classify(result))
     result.update(decide(result))
-    case_notes.record_turn(
-        db, note(db, key), turn_id, original, english, result["analysis"]
-    )
+    case_notes.record_turn(db, n, turn_id, original, english, result["analysis"])
     from hotel.operations import audit
 
-    final = note(db, key)
+    final = n
     audit(
         db,
         n["hotel"],
@@ -483,6 +594,11 @@ def process_turn(db, guest, key, turn_id, original, english, language=None):
 
 
 def finish(db, key):
+    with measure("finalization", call=key):
+        return _finish(db, key)
+
+
+def _finish(db, key):
     n = note(db, key, lock=True)
     if n["status"] == "Ended":
         return

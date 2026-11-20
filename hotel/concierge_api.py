@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from hotel import concierge as c, store
 from hotel.worker_auth import worker_token
 from hotel.languages import to_english, transcribe_auto, detect_text_language, wav_bytes
+from hotel.latency import measure
 
 
 class GuestTurn(BaseModel):
@@ -67,6 +68,11 @@ def authorized(db, p, key, lock=False):
 
 
 def apply_turn(actor, key, body):
+    with measure("turn", call=key, turn=str(body.turn_id)):
+        return _apply_turn(actor, key, body)
+
+
+def _apply_turn(actor, key, body):
     with store.transaction(actor) as db:
         if actor is None:
             # Only the HMAC-authenticated worker route uses this branch.
@@ -95,21 +101,39 @@ def apply_turn(actor, key, body):
         lang = detect_text_language(original, lang)
     if not original:
         return {**public(n), "retry": True}
-    english = to_english(original, lang)
+    with measure("translation", call=key):
+        english = to_english(original, lang)
     if not english.strip():
         raise ValueError("Please repeat the message or use the text option.")
-    with store.transaction() as db:
-        return public(
-            c.process_turn(
-                db,
-                store.profile(db, actor),
-                key,
-                str(body.turn_id),
-                original,
-                english,
-                lang,
-            )
-        )
+    for _ in range(4):
+        prepared = c.classify_turn(n, original, english, lang)
+        try:
+            with store.transaction() as db:
+                result = public(
+                    c.process_turn(
+                        db,
+                        store.profile(db, actor),
+                        key,
+                        str(body.turn_id),
+                        original,
+                        english,
+                        lang,
+                        prepared=prepared,
+                        version=n["version"],
+                    )
+                )
+            return result
+        except c.StaleTurn as stale:
+            n = stale.case
+            if not body.audio:
+                lang = detect_text_language(original, n["language"])
+                with measure("translation", call=key):
+                    english = to_english(original, lang)
+                if not english.strip():
+                    raise ValueError(
+                        "Please repeat the message or use the text option."
+                    )
+    raise HTTPException(409, "The conversation changed. Please retry this turn.")
 
 
 def register(app, context, identity, staff):

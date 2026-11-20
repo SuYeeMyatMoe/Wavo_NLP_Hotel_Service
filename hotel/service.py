@@ -575,12 +575,14 @@ def end(key: str, actor=Depends(identity)):
             raise PermissionError("Call unavailable.")
         if db.one("SELECT id FROM call_notes WHERE id=?", (key,)):
             concierge.finish(db, key)
-            return {"ended": True}
-        db.run(
-            "UPDATE calls SET status=? WHERE id=? AND status IN ('Ringing','Connecting','Connected')",
-            ("Declined" if c["status"] == "Ringing" else "Ended", key),
-        )
-        return {"ended": True}
+        else:
+            db.run(
+                "UPDATE calls SET status=? WHERE id=? AND status IN ('Ringing','Connecting','Connected')",
+                ("Declined" if c["status"] == "Ringing" else "Ended", key),
+            )
+    from hotel.completion import ended_receipt
+
+    return ended_receipt(actor, key)
 
 
 @app.get("/tools")

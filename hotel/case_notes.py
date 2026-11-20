@@ -109,6 +109,7 @@ def record_turn(db, n, turn_id, original, english, analysis):
             "UPDATE call_notes SET issue=?,analysis=? WHERE id=?",
             (saved.get("text", ""), json.dumps(saved), n["id"]),
         )
+        n.update(issue=saved.get("text", ""), analysis=json.dumps(saved))
 
 
 def structured(db, n):

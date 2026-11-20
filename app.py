@@ -20,9 +20,7 @@ st.set_page_config(
 st.html(ROOT / "hotel/ui.css")
 st.html(ROOT / "hotel/hotel.css")
 loading_slot = st.empty()
-loading_slot.html(
-    '<div class="wavo-loading" role="status" aria-live="polite"><div class="wavo-loading-card"><span class="wavo-loading-bell" aria-hidden="true"></span><span>Wavo is getting things ready…</span></div></div>'
-)
+LOADING_MARKUP = '<div class="wavo-loading" role="status" aria-live="polite"><div class="wavo-loading-card"><span class="wavo-loading-bell" aria-hidden="true"></span><span>Wavo is getting things ready…</span></div></div>'
 from dotenv import load_dotenv
 from hotel import welcome
 
@@ -48,6 +46,8 @@ def hero(title, subtitle):
 
 def sign_in():
     import requests
+    from time import perf_counter
+    from hotel.http_client import request as http_request
 
     entrance = (
         st.query_params.get("login") or st.query_params.get("workspace") or "guest"
@@ -82,26 +82,37 @@ def sign_in():
             "Password", type="password", key="demo_password_" + entrance
         )
         if st.form_submit_button("Sign in", type="primary"):
+            loading_slot.html(LOADING_MARKUP)
+            started = perf_counter()
+            S.login_timings = {}
             try:
-                r = requests.post(
+                r = http_request(
+                    "POST",
                     os.environ["SUPABASE_URL"].rstrip("/") + "/auth/v1/token",
                     params={"grant_type": "password"},
                     headers={"apikey": os.environ["SUPABASE_PUBLISHABLE_KEY"]},
                     json={"email": email, "password": password},
                     timeout=10,
                 )
+                S.login_timings["authentication_seconds"] = perf_counter() - started
                 if r.ok:
                     session = r.json()
-                    profile = requests.get(
+                    profile_started = perf_counter()
+                    profile = http_request(
+                        "GET",
                         os.environ["HOTEL_API_URL"].rstrip("/") + "/workspace/updates",
                         headers={"Authorization": "Bearer " + session["access_token"]},
                         timeout=15,
+                    )
+                    S.login_timings["workspace_seconds"] = (
+                        perf_counter() - profile_started
                     )
                     if profile.ok:
                         updates = profile.json()
                         role = updates["profile"]["role"]
                         if (role == "guest") == (entrance == "guest"):
                             S.auth = session
+                            S.login_render_started = perf_counter()
                             from hotel.ui_client import remember
 
                             # This authenticated response already contains /me
@@ -117,10 +128,17 @@ def sign_in():
                         st.error(
                             "Your account needs a hotel profile before signing in."
                         )
+                    loading_slot.empty()
                     st.stop()
                 st.error("Check your sign-in details.")
-            except (KeyError, requests.RequestException):
+            except requests.Timeout:
+                st.error("Sign-in took too long. Please try again.")
+            except requests.RequestException:
+                st.error("The sign-in service is unavailable. Please try again.")
+            except (KeyError, ValueError):
                 st.error("The sign-in service needs configuration.")
+            finally:
+                loading_slot.empty()
     st.stop()
 
 
@@ -240,12 +258,16 @@ def evaluation():
 
 
 def reset_example():
+    from hotel.nlp import EXAMPLE
+
     S.complaint = EXAMPLE
     S.pop("analysis", None)
     S.pop("saved", None)
 
 
 def intelligence():
+    from hotel.nlp import EXAMPLE
+
     hero(
         "NLP <em>Studio</em>",
         "Trace a guest complaint from its first words to the right hotel team.",
@@ -868,9 +890,8 @@ def guest_home():
         st.caption(
             "Optional. Speech is processed to help you. With transcript storage off, Wavo keeps only the service note and task. Cloud voice providers have their own processing policies."
         )
-    from hotel.guest_history_ui import home_progress
-
-    home_progress(jump)
+    # Reserve its existing position, but fetch progress after the controls render.
+    progress_slot = st.container()
     pending_service = S.pop("pending_service", None)
     if pending_service:
         S.message_mode = "Text"
@@ -923,6 +944,7 @@ def guest_home():
         if permission != bool(me["consent"]):
             request("PUT", "/consent", params={"value": permission})
             st.rerun()
+    return progress_slot
 
 
 def calls_page():
@@ -1032,7 +1054,6 @@ if (mode == "preview" and "preview_actor" not in S) or (
         welcome.demo_login(entrance)
     sign_in()
 
-from hotel.nlp import EXAMPLE
 from hotel.ui_client import request
 from hotel.phone import PHONE, LOCAL_PHONE
 from hotel import desk, studio, workspace
@@ -1053,6 +1074,8 @@ browser_voice = bool(
     and mode == "connected"
     and os.getenv("CONCIERGE_MODE", "auto") != "local"
 )
+
+
 @st.fragment
 def account_controls():
     account_menu = st.popover(
@@ -1095,7 +1118,7 @@ def account_controls():
                 "App language / 语言 / भाषा / Bahasa / ဘာသာစကား",
                 list(NAMES),
                 index=list(NAMES).index(me["language"]),
-                format_func=NAMES.get,
+                format_func=NAMES.__getitem__,
                 key="guest_locale",
             )
             if lang != me["language"]:
@@ -1158,10 +1181,16 @@ if browser_voice:
             and not S.get("active_call")
             and not S.get("completed_call"),
             "dismissedCall": S.get("dismissed_call"),
+            "retryFinalization": S.get("retry_finalization"),
         },
         key="guest_live_reception",
         on_completed_call_change=lambda: None,
+        on_finalizing_change=lambda: None,
     )
+    from hotel.post_call_state import accept_finalization
+    from hotel.ui_client import _cache
+
+    accept_finalization(S, _cache(), live_result.finalizing)
     if live_result.completed_call and live_result.completed_call != S.get(
         "dismissed_call"
     ):
@@ -1175,14 +1204,18 @@ if guest and (S.get("active_call") or S.get("call_key")):
         st.stop()
 # Show the confirmed hang-up receipt before unrelated history/inbox reads.
 # Those reads can stop a rerun on a network error; they must not hide it.
-if guest and (S.get("completed_call") or S.get("request_receipt")):
+if guest and (
+    S.get("finalizing_call") or S.get("completed_call") or S.get("request_receipt")
+):
     from hotel.post_call_ui import request_popup
 
     loading_slot.empty()
     request_popup(
-        S.get("completed_call") or S.request_receipt,
+        (S.get("finalizing_call") or {}).get("key")
+        or S.get("completed_call")
+        or S.request_receipt,
         jump,
-        call=bool(S.get("completed_call")),
+        call=bool(S.get("finalizing_call") or S.get("completed_call")),
     )
 inbox_slot = st.container()
 if me["role"] == "manager" and S.get("settings_open"):
@@ -1202,7 +1235,7 @@ elif page == "Insights":
 elif page == "Calls":
     calls_page()
 elif page == "Reception":
-    guest_home()
+    home_progress_slot = guest_home()
 elif page in {"All tasks", "My work"} and S.get("selected_ticket"):
     workspace.my_work(me, jump, evidence)
 elif page in {"All tasks", "My work"}:
@@ -1220,5 +1253,16 @@ else:
 # Only foreground navigation owns the large loader. Background updates have
 # their own fragment and must never put the whole screen into a loading state.
 loading_slot.empty()
+if "login_render_started" in S:
+    from time import perf_counter
+
+    S.login_timings["usable_workspace_seconds"] = perf_counter() - S.pop(
+        "login_render_started"
+    )
+if guest and page == "Reception":
+    from hotel.guest_history_ui import home_progress
+
+    with home_progress_slot:
+        home_progress(jump)
 with inbox_slot:
     workspace_updates()

@@ -3,12 +3,29 @@
 import hashlib
 import json
 import math
+import logging
 from datetime import datetime
 from uuid import UUID
 
 from fastapi import Depends
 from pydantic import BaseModel, Field
 from hotel import store, operations as op, work_orders
+from hotel.latency import measure
+
+
+def ended_receipt(actor, key):
+    """Optional projection, called only AFTER the hang-up transaction commits."""
+    response = {"ended": True, "call_id": key, "result": None}
+    if not key:
+        return response
+    try:
+        with measure("receipt", call=key):
+            with store.transaction() as db:
+                response["result"] = call_result(db, store.profile(db, actor), key)
+    except Exception:
+        # A failed read must not turn a committed hang-up into a failed action.
+        logging.getLogger("wavo.latency").warning("receipt_unavailable")
+    return response
 
 
 def migrate_local(db):

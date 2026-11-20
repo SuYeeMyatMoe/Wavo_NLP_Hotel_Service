@@ -4,11 +4,17 @@ import re
 import unicodedata
 
 
-def service_consent(text):
-    """Return True, False, or None (unclear); never infer consent from an issue."""
+def normalize_reply(text):
+    """Normalize common speech punctuation without removing refusals or conditions."""
     value = unicodedata.normalize("NFKC", text).casefold().replace("’", "'")
     value = value.strip(" \t\r\n\"'“”‘’")
-    value = re.sub(r"^(?:(?:uh|um|oh|well)[,\s]+)+", "", value)
+    value = re.sub(r"^(?:(?:uh|um|oh|well)[,.\s]+)+", "", value)
+    return re.sub(r"\bo[.\s]+k\b\.?", "okay", value)
+
+
+def service_consent(text):
+    """Return True, False, or None (unclear); never infer consent from an issue."""
+    value = normalize_reply(text)
     # Negation must concern the visit/permission, not the reported problem
     # ("Yes, send maintenance. The AC still doesn't work.").
     if re.search(
@@ -26,7 +32,8 @@ def service_consent(text):
         return None
     if re.match(
         r"^(?:yes|yeah|yep|yup|okay|ok|sure|certainly|absolutely|of course|"
-        r"go ahead|please do|that's fine|sounds good|all right|alright)\b",
+        r"go ahead|please do|that's fine|sounds good|all right|alright|"
+        r"(?:that(?:'s| is)|it(?:'s| is)) (?:okay|ok|fine))\b",
         value,
     ):
         return True

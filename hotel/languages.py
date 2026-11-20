@@ -6,10 +6,9 @@ import io
 import wave
 import re
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal
 
 from hotel.language_models import BASE
-from hotel.nlp import analyze
 
 Language = Literal["en", "zh", "hi", "ms", "my"]
 InputLanguage = Literal["auto", "en", "zh", "hi", "ms", "my"]
@@ -179,7 +178,10 @@ def guest_analysis(text, language, raw=None):
             english = to_english(original, language)
     except (ImportError, RuntimeError, OSError, ValueError):
         pass  # Preserve the original for staff when inference is unavailable.
+    result: dict[str, Any]
     if english and len(english) <= 8000:
+        from hotel.nlp import analyze
+
         result = analyze(english)
     else:
         result = {

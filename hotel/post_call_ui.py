@@ -39,6 +39,9 @@ def confirmation(ref, version, prefix):
 
 def dismiss_receipt():
     state = st.session_state
+    from hotel.post_call_state import dismiss_pending
+
+    dismiss_pending(state)
     cache = _cache()
     for key in list(cache):
         if key[0] == "receipt":
@@ -58,6 +61,23 @@ def request_popup(key, jump, call=True):
 
 @st.fragment(run_every="5s")
 def receipt(key, jump, call=True):
+    pending = st.session_state.get("finalizing_call")
+    if pending and pending["key"] == key:
+        with st.container(border=True, key="post_call_receipt"):
+            st.caption("WAVO · REQUEST UPDATE")
+            if pending["status"] == "failed":
+                st.warning(
+                    "Microphone is off. Could not confirm hang-up with the hotel."
+                )
+                if st.button("Retry finalization", key="retry_finalization_button"):
+                    st.session_state.retry_finalization = str(uuid4())
+                    st.rerun(scope="app")
+            else:
+                st.info("Checking your request…")
+            if st.button("Close", key="pending_receipt_close"):
+                dismiss_receipt()
+                st.rerun(scope="app")
+        return
     if st.session_state.get("completed_call" if call else "request_receipt") != key:
         return
     with st.container(border=True, key="post_call_receipt"):

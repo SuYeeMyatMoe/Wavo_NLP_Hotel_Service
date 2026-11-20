@@ -175,7 +175,9 @@ def related_calls(ref):
 
 @st.fragment(run_every="15s")
 def home_progress(jump):
-    tasks = request("GET", "/tickets")
+    tasks = request("GET", "/tickets", optional=True)
+    if tasks is None:
+        return
     opened = [t for t in tasks if t["status"] not in {"Resolved", "Closed"}]
     if not opened:
         return

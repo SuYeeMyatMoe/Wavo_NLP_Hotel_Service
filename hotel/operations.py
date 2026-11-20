@@ -73,12 +73,13 @@ def notify(db, hotel, recipient, ref, kind, message, key, at=None):
 
 def state(db, t, value, reason, at=None):
     at = at or store.now()
-    db.run(
-        "INSERT INTO service_lifecycle VALUES(?,?,?,1,?,?) ON CONFLICT(ticket) DO UPDATE SET state=excluded.state,version=service_lifecycle.version+1,reason=excluded.reason,updated=excluded.updated",
-        (t["id"], t["hotel"], value, reason, at),
-    )
-    db.run("UPDATE tickets SET status=? WHERE id=?", (LABELS[value], t["id"]))
-    store.record(db, t["id"], LABELS[value], "Controller")
+    with db.batch():
+        db.run(
+            "INSERT INTO service_lifecycle VALUES(?,?,?,1,?,?) ON CONFLICT(ticket) DO UPDATE SET state=excluded.state,version=service_lifecycle.version+1,reason=excluded.reason,updated=excluded.updated",
+            (t["id"], t["hotel"], value, reason, at),
+        )
+        db.run("UPDATE tickets SET status=? WHERE id=?", (LABELS[value], t["id"]))
+        store.record(db, t["id"], LABELS[value], "Controller")
 
 
 def snapshot(db, ref):
@@ -238,6 +239,13 @@ def dispatch(db, ref, *, exclude=(), at=None, review_reason=""):
         else a.get("extraction", {}).get("topic", "")
     )
     candidates = []
+    loads = {
+        r["staff"]: r["n"]
+        for r in db.all(
+            "SELECT a.staff,COUNT(*) AS n FROM task_assignments a JOIN staff_roster r ON r.staff=a.staff WHERE r.hotel=? AND a.active=1 GROUP BY a.staff",
+            (t["hotel"],),
+        )
+    }
     for r in roster:
         if (
             r["role"] not in store.STAFF
@@ -250,10 +258,7 @@ def dispatch(db, ref, *, exclude=(), at=None, review_reason=""):
             continue
         if category not in json.loads(r["skills"]):
             continue
-        load = db.one(
-            "SELECT COUNT(*) AS n FROM task_assignments WHERE staff=? AND active=1",
-            (r["staff"],),
-        )["n"]
+        load = loads.get(r["staff"], 0)
         if load < r["capacity"]:
             candidates.append((load, r["last_assigned"], r["staff"], r))
     if not candidates:
@@ -310,30 +315,32 @@ def dispatch(db, ref, *, exclude=(), at=None, review_reason=""):
         t["hotel"], department, worker, policy
     )
     uid = str(uuid4())
-    db.run(
-        "INSERT INTO task_assignments(id,ticket,staff,hotel,attempt,assigned,ack_due,service_due,reason) VALUES(?,?,?,?,?,?,?,?,?)",
-        (
-            uid,
-            ref,
-            worker,
-            t["hotel"],
-            attempt,
-            at,
-            later(at, ack_minutes),
-            later(at, service_minutes),
-            reason,
-        ),
-    )
-    db.run("UPDATE staff_roster SET last_assigned=? WHERE staff=?", (at, worker))
+    with db.batch():
+        db.run(
+            "INSERT INTO task_assignments(id,ticket,staff,hotel,attempt,assigned,ack_due,service_due,reason) VALUES(?,?,?,?,?,?,?,?,?)",
+            (
+                uid,
+                ref,
+                worker,
+                t["hotel"],
+                attempt,
+                at,
+                later(at, ack_minutes),
+                later(at, service_minutes),
+                reason,
+            ),
+        )
+        db.run("UPDATE staff_roster SET last_assigned=? WHERE staff=?", (at, worker))
     if not review_reason:
         from hotel.completion import seed_assignment
 
         seed_assignment(db, t, uid, solution["procedures"][0], at)
-    db.run(
-        "INSERT INTO ticket_work(ticket,owner,updated) VALUES(?,?,?) ON CONFLICT(ticket) DO UPDATE SET owner=excluded.owner,outcome='',action='',note='',version=ticket_work.version+1,updated=excluded.updated",
-        (ref, worker, at),
-    )
-    db.run("UPDATE tickets SET operator=? WHERE id=?", (r["name"], ref))
+    with db.batch():
+        db.run(
+            "INSERT INTO ticket_work(ticket,owner,updated) VALUES(?,?,?) ON CONFLICT(ticket) DO UPDATE SET owner=excluded.owner,outcome='',action='',note='',version=ticket_work.version+1,updated=excluded.updated",
+            (ref, worker, at),
+        )
+        db.run("UPDATE tickets SET operator=? WHERE id=?", (r["name"], ref))
     state(db, t, "assigned", reason, at)
     if t["urgency"] in {"Critical", "Unassessed"}:
         escalate(db, t, review_reason + "; reception owner assigned", marker, at)

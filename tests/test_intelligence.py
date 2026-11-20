@@ -89,7 +89,9 @@ def test_readonly_simulation_and_rules(client):
         and "Conflicting" in result["solution"]["reason"]
     )
     result = client.post("/analyze", json={"text": "My room light is broken."}).json()
-    assert not result["solution"]["procedures"]
+    assert result["solution"]["procedures"][0]["category"] == "Electrical"
+    assert result["solution"]["procedures"][0]["department"] == "Maintenance"
+    assert not client.get("/tickets").json()
 
 
 def test_case_only_retention_and_room305(client):

@@ -117,6 +117,7 @@ async def reception(ctx: JobContext):
     from hotel.voice_input import VoiceInput
 
     inputs = VoiceInput()
+    timing = {}
     from hotel.voice_turns import VoiceTurns
 
     async def process(uid, utterance):
@@ -128,8 +129,12 @@ async def reception(ctx: JobContext):
             {"text": utterance, "turn_id": uid},
         )
         log.info(
-            "voice_service_completed elapsed_ms=%d", (time.monotonic() - at) * 1000
+            "voice_service_completed call=%s turn=%s elapsed_ms=%d",
+            key,
+            uid,
+            (time.monotonic() - at) * 1000,
         )
+        timing["backend"] = time.monotonic()
         return result
 
     async def notify(result):
@@ -148,6 +153,15 @@ async def reception(ctx: JobContext):
     @session.on("user_input_transcribed")
     def transcribed(event):
         pending = inputs.observe(event.item_id, event.transcript, event.is_final)
+        if event.is_final:
+            log.info(
+                "voice_transcript_ready call=%s turn=%s speech_end_ms=%d",
+                key,
+                inputs.key,
+                (time.monotonic() - timing["speech_end"]) * 1000
+                if "speech_end" in timing
+                else -1,
+            )
         if not pending:
             return
 
@@ -178,6 +192,23 @@ async def reception(ctx: JobContext):
             event.new_state,
             (time.monotonic() - started) * 1000,
         )
+        if event.new_state == "speaking" and "speech_end" in timing:
+            now = time.monotonic()
+            log.info(
+                "voice_reply_started call=%s turn=%s speech_end_ms=%d backend_ms=%d",
+                key,
+                inputs.key,
+                (now - timing["speech_end"]) * 1000,
+                (now - timing["backend"]) * 1000 if "backend" in timing else -1,
+            )
+
+    @session.on("user_state_changed")
+    def user_state(event):
+        if event.new_state == "speaking":
+            timing.clear()
+        elif event.old_state == "speaking":
+            timing["speech_end"] = time.monotonic()
+            log.info("voice_speech_end call=%s", key)
 
     @session.on("error")
     def agent_error(event):
@@ -252,7 +283,7 @@ async def reception(ctx: JobContext):
         + (
             "Staff reports are not guest-verified completion. "
             if staff
-            else "Ask permission to send a team to the room only when the backend asks you to. After the guest agrees, report their answer through report_turn and wait for the confirmed assignment. Room moves and refunds need approval. Escalate safety concerns. "
+            else "Ask permission to send a team to the room only when the backend asks you to. After the guest agrees, report their answer through report_turn and wait for the confirmed assignment. Reception follow-up is a service task, not a live call handoff: never ask reception to join or tell the guest to stay on the call unless they explicitly requested a human and the backend confirms a live handoff. Room moves and refunds need approval. Escalate safety concerns. "
         )
         + "Verified service context: "
         + json.dumps(info)

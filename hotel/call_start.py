@@ -136,7 +136,10 @@ def register(app, identity, credentials):
                 "INSERT INTO call_starts VALUES(?,?,NULL,1,0,?) ON CONFLICT(actor,request_key) DO UPDATE SET cancelled=1",
                 (actor, str(key), store.now()),
             )
-            return {"ended": True, "call_id": old["call_id"] if old else None}
+            call_id = old["call_id"] if old else None
+        from hotel.completion import ended_receipt
+
+        return ended_receipt(actor, call_id)
 
     @app.get("/calls/{key}/status")
     def status(key: str, actor=Depends(identity)):
