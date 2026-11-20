@@ -1,0 +1,100 @@
+/* Wavo's vintage room palette, shared by every native Streamlit workspace. */
+:root {
+  --ink: #f0dfc9;
+  --navy: #f0dfc9;
+  --gold: #e7bc80;
+  --muted: #c8ab8c;
+  --line: #765339;
+  --paper: #21140e;
+  --surface: #2b1b13;
+  --brass: #b78b54;
+}
+
+.stApp {
+  background: radial-gradient(ellipse at 52% 0%, #432718 0, #21140e 460px);
+}
+
+.stApp .st-key-masthead {
+  background: linear-gradient(110deg, #382218, #281b14);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 6px 16px;
+}
+.brand small, .hotel-overline { color: var(--gold); }
+.stApp .st-key-nav { border-bottom: 1px solid var(--line); }
+.stApp [data-testid="stSegmentedControl"] button { border-color: var(--line); }
+.stApp [data-testid="stForm"], .stApp [data-testid="stVerticalBlockBorderWrapper"] {
+  border-color: var(--line);
+}
+.stApp .hero {
+  background:
+    linear-gradient(90deg, #352217 20%, #352217ee 58%, #3522175c 100%),
+    url('app/static/room-detail.jpg') right 52% / auto 180% no-repeat,
+    #352217;
+  border-color: var(--line);
+}
+.stApp .hero h1 em { color: var(--gold); }
+.stApp .result, .stApp .token {
+  color: var(--ink);
+  background: #462f20;
+  border: 1px solid #765339;
+}
+.stApp .result small, .stApp .datum small { color: var(--muted); }
+
+.stApp .st-key-vintage_arrival {
+  width: 100vw;
+  max-width: none;
+  margin-inline: calc(50% - 50vw);
+  background: #170c05;
+}
+.stApp:has(.st-key-vintage_arrival) .block-container { padding-top: 0; }
+.stApp:has(.st-key-vintage_arrival) [data-testid="stMainBlockContainer"] { overflow-x: clip; }
+.public-nav, .hotel-footer { border-color: var(--line); }
+.shortcut-grid a, .service-images a {
+  color: var(--ink);
+  background: #362319;
+  border-color: var(--line);
+}
+.shortcut-grid a:hover { background: #493121; }
+.login-photo { border: 1px solid var(--line); }
+.stApp .st-key-guest_welcome,
+.stApp .st-key-call_screen,
+.stApp .st-key-post_call_receipt,
+.stApp .st-key-home_progress {
+  background: linear-gradient(135deg, #3e281b, #2b1b13) !important;
+  border: 1px solid var(--line) !important;
+  color: var(--ink);
+}
+.guest-mascot { display: grid; place-items: center; }
+.guest-mascot img {
+  width: min(235px, 100%);
+  aspect-ratio: 1;
+  object-fit: cover;
+  object-position: 51% 55%;
+  border: 1px solid var(--brass);
+  border-radius: 50%;
+}
+.stApp .wavo-loading { background: #1b100bd9; }
+.stApp .wavo-loading-card {
+  background: #332116;
+  color: var(--ink);
+  border-color: var(--line);
+}
+.stApp .wavo-loading-bell { background: var(--brass); }
+.stApp .wavo-loading-bell::before, .stApp .wavo-loading-bell::after {
+  background: var(--brass);
+}
+.stApp [data-testid="stMetric"] { border-color: var(--line); }
+.stApp .st-key-wavo_cursor_embers { display: none; }
+.cursor-embers {
+  position: fixed; inset: 0; z-index: 10000;
+  overflow: hidden; pointer-events: none;
+}
+.cursor-embers i {
+  position: absolute; width: 4px; height: 4px;
+  background: #ffe5ab; border-radius: 1px;
+  box-shadow: 0 0 7px #eea647d0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cursor-embers { display: none; }
+}

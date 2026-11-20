@@ -5,8 +5,8 @@ import pandas as pd
 import streamlit as st
 from hotel.ui_client import request
 
-BRONZE = "#80643E"
-GREEN = "#50785F"
+BRONZE = "#DDB479"
+GREEN = "#8AB499"
 
 
 def render(jump):

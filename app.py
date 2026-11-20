@@ -19,6 +19,10 @@ st.set_page_config(
 )
 st.html(ROOT / "hotel/ui.css")
 st.html(ROOT / "hotel/hotel.css")
+st.html(ROOT / "hotel/vintage.css")
+from hotel.vintage_ui import cursor_embers, room as vintage_room
+
+cursor_embers()
 loading_slot = st.empty()
 loading_slot.html(
     '<div class="wavo-loading" role="status" aria-live="polite"><div class="wavo-loading-card"><span class="wavo-loading-bell" aria-hidden="true"></span><span>Wavo is getting things ready…</span></div></div>'
@@ -709,7 +713,7 @@ def phone_panel():
                     "muted": tr("Microphone muted"),
                     "mute": tr("Mute microphone"),
                     "unmute": tr("Unmute microphone"),
-                    "mascot": tr("Your bear concierge"),
+                    "mascot": tr("Your Wavo concierge"),
                     "end": tr("End call"),
                 },
                 key="live_" + c["id"],
@@ -846,12 +850,12 @@ def begin_call():
 def guest_home():
     if not browser_voice:
         with st.container(key="guest_welcome", border=True):
-            bear, action = st.columns(
+            mascot, action = st.columns(
                 [1, 1.3], vertical_alignment="center", gap="large"
             )
-            with bear:
+            with mascot:
                 st.html(
-                    '<div class="guest-bear"><img src="app/static/wavo-bear.png" alt="Your brown bear concierge waving hello"></div>'
+                    '<div class="guest-mascot"><img src="app/static/wavo-concierge.jpg" alt="Wavo’s brass concierge"></div>'
                 )
             with action:
                 st.caption(tr("Room") + " " + me["room"])
@@ -1144,6 +1148,17 @@ page = (
     )
     or pages[0]
 )
+if guest and page == "Reception" and not any(
+    S.get(key) for key in ("active_call", "call_key", "completed_call", "request_receipt")
+):
+    scene = vintage_room()
+    if scene.telephone:
+        if browser_voice:
+            S.vintage_show_call = True
+            S.vintage_focus_call = True
+        else:
+            begin_call()
+
 if browser_voice:
     # This component stays at one fixed position/key on every guest page.
     # Its browser owns permission, startup and media; no rerun between clicks.
@@ -1155,8 +1170,10 @@ if browser_voice:
             "accessToken": S.auth["access_token"],
             "room": me["room"],
             "visible": page == "Reception"
+            and bool(S.get("vintage_show_call"))
             and not S.get("active_call")
             and not S.get("completed_call"),
+            "focusLauncher": S.pop("vintage_focus_call", False),
             "dismissedCall": S.get("dismissed_call"),
         },
         key="guest_live_reception",
@@ -1166,6 +1183,7 @@ if browser_voice:
         "dismissed_call"
     ):
         if S.get("completed_call") != live_result.completed_call:
+            S.vintage_show_call = False
             S.completed_call = live_result.completed_call
             jump("Reception")
 if guest and (S.get("active_call") or S.get("call_key")):

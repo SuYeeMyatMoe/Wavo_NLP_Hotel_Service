@@ -28,6 +28,13 @@ export default function ({parentElement,data,setStateValue}) {
    meter.hidden=!active();privacy.hidden=!s.data.api;consent.disabled=s.phase==='connecting';
    play.hidden=!s.blocked;play.textContent='Tap to hear Wavo';
    diagnostics.hidden=s.phase==='idle';
+   if(!box.hidden && s.data.focusLauncher && !active()){
+     s.data.focusLauncher=false;
+     requestAnimationFrame(()=>{
+       box.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'nearest'});
+       start.focus({preventScroll:true});
+     });
+   }
    report.textContent='Microphone: '+(s.stream?(s.muted?'muted':'active'):'off')+'\nSpeaker playback: '+(s.blocked?'tap to enable':s.audioContext?.state==='running'?'ready':'off')+'\nAI audio: '+('first_signal_ms' in s.metrics?'received':'waiting')+'\n'+Object.entries(s.metrics).map(([k,v])=>k.replace(/_ms$/,'').replaceAll('_',' ')+': '+(v/1000).toFixed(1)+'s').join('\n');
  };
  async function api(path,body,method='POST',keepalive=false){
@@ -141,6 +148,6 @@ export default function ({parentElement,data,setStateValue}) {
    }
  };
  end.onclick=()=>{if(active()||s.call||s.startKey)void finish();else{caption.textContent='';help.textContent='';show('idle');}};
- const mascot=$('.mascot');mascot.setAttribute('aria-label','Your bear concierge');mascot.onclick=()=>{mascot.classList.remove('wave');void mascot.offsetWidth;mascot.classList.add('wave');};
+ const mascot=$('.mascot');mascot.setAttribute('aria-label',s.data.mascot||'Your Wavo concierge');mascot.onclick=()=>{mascot.classList.remove('wave');void mascot.offsetWidth;mascot.classList.add('wave');};
  s.render();return s.dispose;
 }

@@ -48,3 +48,14 @@
 @media(max-width:600px){.live-launcher{margin:12px 0;padding:20px 10px}.call-controls{flex-wrap:wrap}.call-controls button{min-width:130px}}
 
 .call-avatar h2{font-family:Georgia,serif;font-weight:400;font-size:32px;color:#30251d}.call-avatar{color:#30251d}.live-launcher{border-color:#d8c7b1;background:linear-gradient(125deg,#f5ebdb,#fffdf8)}
+/* Matching call surfaces across guest, local audio and staff handoff. */
+.call-avatar, .call-avatar h2 { color: #f0dfc9; }
+.live-launcher { background: linear-gradient(135deg, #3e281b, #2b1b13); border-color: #765339; }
+.call-room, .call-state small, .call-privacy, .live-transcript, .call-help { color: #d9ba96; }
+.call-controls { background: #2b1b13f5; border: 1px solid #765339; }
+.mascot img { width: min(210px, 85%); height: auto; aspect-ratio: 1; object-fit: cover; object-position: 51% 55%; border-radius: 50%; border: 1px solid #bc935f; }
+.mascot-halo { background: radial-gradient(circle, #684426, #352016); box-shadow: 0 0 0 9px #b9854e29; }
+.microphone { background: #e0b476; border-color: #e0b476; color: #29170b; }
+.microphone[aria-pressed="true"], .play-reply, .send-turn { background: #422c1f; color: #f0dfc9; border-color: #9e7049; }
+.hangup { background: #582b25; color: #ffddd3; border-color: #a96354; }
+.voice-bars i { background: #d7a668; }

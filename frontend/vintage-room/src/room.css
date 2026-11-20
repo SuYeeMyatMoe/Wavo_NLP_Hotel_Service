@@ -1,0 +1,288 @@
+/* The original composition is always fitted whole, without cropping. */
+.photo-experience {
+  width: 100%;
+  height: 100svh;
+  overflow: hidden;
+  background: #170c05;
+  display: grid;
+  place-items: center;
+}
+.photo-room-shell {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+.photo-stage {
+  position: relative;
+  width: min(100vw, 177.4708svh);
+  aspect-ratio: 1670/941;
+  isolation: isolate;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+.reference-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  transition: filter 1s;
+}
+.lamp-off .reference-photo {
+  filter: brightness(0.36);
+}
+.animated-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+.animated-photo.ready {
+  opacity: 1;
+}
+.photo-chain,
+.photo-phone {
+  position: absolute;
+  z-index: 2;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  border-radius: 50%;
+  color: transparent;
+  -webkit-tap-highlight-color: transparent;
+}
+.photo-chain {
+  left: 32.994%;
+  top: 67.269%;
+  width: max(2.8%, 44px);
+  height: max(5%, 44px);
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  touch-action: none;
+}
+.photo-chain:active {
+  cursor: grabbing;
+}
+.photo-phone {
+  left: 70.24%;
+  top: 57.17%;
+  width: max(3.5%, 44px);
+  height: max(4.9%, 44px);
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.photo-phone:hover {
+  box-shadow: inset 0 1px 5px #ffe6bd22;
+}
+.photo-phone.pressed {
+  box-shadow: inset 0 3px 8px #11070088;
+}
+.photo-chain:focus-visible,
+.photo-phone:focus-visible {
+  outline: 1px solid #f9d599;
+  outline-offset: 2px;
+}
+.chain-3d-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+.lamp-body-switch {
+  position: absolute;
+  left: 23.8%;
+  top: 20.2%;
+  width: 23.7%;
+  height: 28.6%;
+  border: 0;
+  border-radius: 45% 45% 5% 5%;
+  padding: 0;
+  background: transparent;
+  z-index: 3;
+  cursor: pointer;
+  color: transparent;
+}
+.photo-chain {
+  z-index: 4;
+}
+.photo-phone {
+  z-index: 4;
+}
+.cleaned-fallback {
+  visibility: hidden;
+}
+.photo-ready .cleaned-fallback {
+  visibility: visible;
+}
+.lamp-off .cleaned-fallback {
+  filter: brightness(0.82);
+}
+.phone-hint {
+  position: absolute;
+  z-index: 8;
+  left: 77.7%;
+  top: 35.2%;
+  width: 18.6%;
+  padding: clamp(12px, 1.8vw, 27px);
+  color: #ffe2b6;
+  background: #321e10ed;
+  border: 1px solid #c99858;
+  border-radius: 20px;
+  box-shadow: 0 8px 28px #0003;
+  backdrop-filter: blur(10px);
+  animation: hint-appear 0.25s ease-out;
+}
+.phone-hint h2 {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 0 15px 12px 0;
+  font-size: clamp(16px, 1.6vw, 27px);
+  font-weight: 400;
+  white-space: nowrap;
+}
+.phone-hint p {
+  margin: 0;
+  font-size: clamp(14px, 1.23vw, 22px);
+  line-height: 1.5;
+}
+.hint-close {
+  position: absolute;
+  right: 3px;
+  top: 1px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  background: transparent;
+  color: #f0d7b1;
+  font-size: 25px;
+}
+@keyframes hint-appear {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-width: 700px) {
+  .phone-hint {
+    position: fixed;
+    left: auto;
+    right: 16px;
+    top: auto;
+    bottom: 24px;
+    width: min(290px, calc(100vw - 32px));
+    padding: 20px 22px;
+    border-radius: 16px;
+  }
+  .phone-hint h2 {
+    font-size: 22px;
+  }
+  .phone-hint p {
+    font-size: 16px;
+  }
+  .hint-close {
+    width: 44px;
+    height: 44px;
+  }
+}
+.phone-hint {
+  backdrop-filter: none;
+  background: #321e10f5;
+  box-shadow: 0 6px 18px #0002;
+}
+.phone-hint-arrow {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9;
+  overflow: visible;
+  pointer-events: none;
+  color: #f7d49a;
+}
+.phone-hint-arrow {
+  color: #ffe2b1;
+  filter: none;
+}
+
+:host {
+  display: block;
+}
+.wavo-room-root {
+  font-family: Georgia, "Times New Roman", serif;
+}
+.wavo-room-root *,
+.wavo-room-root *::before,
+.wavo-room-root *::after {
+  box-sizing: border-box;
+}
+.wavo-room-root button {
+  font: inherit;
+}
+.wavo-room-root .hint-close {
+  font-size: 25px;
+  cursor: pointer;
+}
+.wavo-room-root button:focus-visible {
+  outline: 2px solid #f9d599;
+  outline-offset: 3px;
+}
+.wavo-room-root .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.photo-experience {
+  height: auto;
+  min-height: 0;
+}
+.photo-room-shell {
+  height: auto;
+}
+.photo-stage {
+  width: min(100%, 177.4708svh);
+}
+.compact-room {
+  border-radius: 12px;
+  border: 1px solid #705136;
+}
+.compact-room .photo-stage {
+  width: min(100%, 150svh);
+}
+.cleaned-fallback {
+  visibility: visible;
+}
+@media (max-width: 700px) {
+  .photo-experience {
+    min-height: min(75svh, 500px);
+  }
+  .compact-room {
+    min-height: min(62svh, 390px);
+  }
+  .phone-hint {
+    bottom: max(24px, env(safe-area-inset-bottom));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wavo-room-root *,
+  .wavo-room-root *::before,
+  .wavo-room-root *::after {
+    animation-duration: 0s !important;
+    transition-duration: 0s !important;
+  }
+}

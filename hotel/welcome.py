@@ -4,21 +4,16 @@ import streamlit as st
 import hmac
 
 from hotel.demo_accounts import ACCOUNTS as DEMO_ACCOUNTS, GUESTS
+from hotel.vintage_ui import room
 
 BRAND = '<a class="hotel-mark" href="./" target="_self"><img class="wavo-icon" src="app/static/wavo-icon.png" alt=""> Wavo</a>'
 
 
 def landing():
+    with st.container(key="vintage_arrival"):
+        room(entrance="?login=guest")
     st.html(f"""<header class="public-nav">{BRAND}<nav><a href="#hotel-services">Hotel services</a>
         <a href="?login=staff" target="_self">Staff entrance</a><a class="nav-login" href="?login=guest" target="_self">Guest sign in ↗</a></nav></header>
-        <section class="arrival">
-          <div class="arrival-intro">
-          <div class="arrival-bear"><img src="app/static/wavo-bear.png" alt="Wavo's brown bear concierge waving hello" fetchpriority="high"></div>
-          <div class="arrival-copy"><p class="hotel-overline">Wavo Concierge</p>
-          <h1>Your stay,<br><em>looked after.</em></h1>
-          <p>Get help with your room, hotel services, or special requests.</p>
-          <a class="gold-link" href="?login=guest" target="_self"><span aria-hidden="true">☎</span> Call AI Reception</a></div></div>
-        </section>
         <section class="service-shortcuts" id="hotel-services"><p class="hotel-overline">Hotel services</p><h2>How can we help?</h2>
           <div class="shortcut-grid">
             <a href="?login=guest&amp;service=comfort" target="_self"><span aria-hidden="true">{service_icon("bed")}</span>Room comfort<span aria-hidden="true">→</span></a>
