@@ -103,7 +103,7 @@ export function mountMascot(element: HTMLElement | null) {
       );
       model.pose(1 - Math.max(autoBlink, wink), 1 - autoBlink, talking, wink, step * 10, stride);
       orbit.root.position.set(driftX * .5, floatY * .48, 0);
-      orbit.update(motion ? time : 0, talking);
+      orbit.update(motion ? time : 0);
       renderer.render(scene, camera);
     }
     if (!reduced.matches || Math.abs(desiredYaw - yaw) > .002 || Math.abs(desiredPitch - pitch) > .002 || now / 1000 - winkAt < .4) {

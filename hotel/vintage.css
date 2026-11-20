@@ -1,4 +1,25 @@
 @font-face {
+  font-family: "Alfa Slab One";
+  src: url("app/static/alfa-slab-one-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Arvo;
+  src: url("app/static/arvo-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Arvo;
+  src: url("app/static/arvo-latin-700-normal.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
   font-family: "Cormorant Garamond";
   src: url("app/static/cormorant-garamond-600.woff2") format("woff2");
   font-style: normal;
@@ -8,6 +29,9 @@
 
 /* Wavo's vintage room palette, shared by every native Streamlit workspace. */
 :root {
+  --wavo-heading: "Alfa Slab One", Georgia, serif;
+  --wavo-body: Arvo, Georgia, serif;
+  --wavo-brand-image: url("app/static/wavo-icon.png");
   --ink: #f0dfc9;
   --navy: #f0dfc9;
   --gold: #e7bc80;
@@ -99,7 +123,18 @@
   font: 600 2.2rem/.9 "Cormorant Garamond", Georgia, serif;
   letter-spacing: -.045em;
 }
-.wavo-lockup img { width: 1em; height: 1em; flex: none; }
+.wavo-lockup::before {
+  content: "";
+  width: 1em;
+  height: 1em;
+  flex: none;
+  background: #f3dec0;
+  mask: var(--wavo-brand-image) center / contain no-repeat;
+}
+[data-wavo-theme="light"] .wavo-lockup::before {
+  background: var(--wavo-brand-image) center / contain no-repeat;
+  mask: none;
+}
 .wavo-lockup > span { margin-inline-start: -.065em; }
 .hotel-mark .wavo-lockup { font-size: clamp(2.05rem, 3vw, 2.75rem); }
 [data-wavo-theme="light"] .public-nav :is(.nav-login, .hotel-mark) { color: var(--ink); }
@@ -173,7 +208,7 @@
   color: var(--ink);
   font-size: inherit;
 }
-.service-images a div { justify-items: center; text-align: center; }
+.service-copy { justify-items: center; text-align: center; }
 .shortcut-grid a:hover, .shortcut-grid a:focus-visible { background-color: var(--glass-hover); }
 .service-images a {
   transition: background-color .24s ease, border-color .24s ease, box-shadow .24s ease, transform .24s ease;
@@ -183,8 +218,64 @@
   border-color: var(--accent);
   box-shadow: 0 12px 25px #24140822;
 }
-.service-images a img { transition: filter .24s ease; }
-.service-images a:hover img { filter: saturate(1.17) brightness(1.08); }
+.service-gallery {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: var(--surface);
+  overflow: hidden;
+}
+.service-gallery img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 53%;
+  opacity: 0;
+  transition: opacity .64s ease, filter .24s ease;
+}
+.service-gallery img[aria-hidden="false"] { opacity: 1; }
+.service-gallery img[src$="reception-desk.jpg"] { object-position: center 61%; }
+.service-images a:hover img { filter: saturate(1.08) brightness(1.04); }
+.service-gallery-controls:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 9px;
+}
+.service-gallery-controls button {
+  min-height: 44px;
+  padding-inline: 14px;
+  border: 1px solid var(--glass-line);
+  border-radius: 10px;
+  background: var(--glass-control);
+  color: var(--ink);
+  font-size: .8rem;
+  cursor: pointer;
+}
+.service-gallery-controls button:hover { background: var(--glass-hover); }
+.hotel-guide {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  padding-top: clamp(28px, 5vw, 58px);
+}
+.hotel-guide section {
+  scroll-margin-top: 18px;
+  padding: clamp(18px, 3.2vw, 34px);
+  border: 1px solid var(--glass-line);
+  border-radius: 17px;
+  background: var(--glass-panel);
+  backdrop-filter: var(--glass-filter);
+}
+.hotel-guide h2 { margin: 0 0 12px; font-size: clamp(23px, 3vw, 34px); }
+.hotel-guide p, .hotel-guide ol { margin: 0; }
+.hotel-guide ol { padding-inline-start: 1.4em; }
+.hotel-guide li + li { margin-top: .5em; }
+@media (max-width: 680px) {
+  .hotel-guide { grid-template-columns: 1fr; }
+}
 
 [data-wavo-card] {
   display: grid;

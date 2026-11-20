@@ -24,13 +24,15 @@
   color: #fae4c8;
   border: 1px solid #e6bb7b78;
   border-radius: 50px;
-  background: #24140c38;
+  --room-nav-surface: #24140cef;
+  background: #24140c60;
   backdrop-filter: blur(7px);
 }
 .photo-experience[data-theme="light"] .room-navigation {
   color: #362014;
   border-color: #74451b75;
-  background: #f7e4c35c;
+  --room-nav-surface: #f7e4c3f5;
+  background: #f7e4c3b0;
 }
 .room-navigation a { color: inherit; text-decoration: none; }
 .room-navigation a:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
@@ -40,15 +42,26 @@
   font: 600 clamp(25px, 4.1vw, 44px)/1 "Cormorant Garamond", Georgia, serif;
   letter-spacing: -.045em;
 }
-.room-brand img { width: 1em; height: 1em; flex: none; }
-.room-brand span { margin-inline-start: -.065em; }
-.room-navigation nav { display: flex; align-items: center; gap: clamp(6px, 2.6vw, 34px); }
+.room-brand-mark {
+  width: 1em;
+  height: 1em;
+  flex: none;
+  background: #f3dec0;
+  mask: var(--wavo-brand-image) center / contain no-repeat;
+}
+.photo-experience[data-theme="light"] .room-brand-mark {
+  background: var(--wavo-brand-image) center / contain no-repeat;
+  mask: none;
+}
+.room-brand-mark + span { margin-inline-start: -.065em; }
+.room-navigation nav { display: flex; align-items: center; gap: clamp(8px, 1.8vw, 25px); }
+.room-menu-toggle { display: none; }
 .room-navigation nav a {
   display: inline-flex;
   align-items: center;
-  min-height: 39px;
+  min-height: 44px;
   white-space: nowrap;
-  font: 600 clamp(10px, 2.7vw, 14px)/1.1 Geist, "Segoe UI", sans-serif;
+  font: 700 clamp(11px, 1.75vw, 14px)/1.2 var(--wavo-body);
 }
 .room-navigation nav a:hover { text-decoration: underline; text-underline-offset: 4px; }
 .room-navigation .room-guest-link {
@@ -56,8 +69,31 @@
   border-radius: 28px;
   padding-inline: clamp(5px, 1.35vw, 16px);
 }
-@media (max-width: 380px) {
-  .room-navigation nav a { min-height: 34px; }
+@media (max-width: 640px) {
+  .room-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid currentColor;
+    border-radius: 30px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+  .room-navigation nav {
+    display: none;
+    position: absolute;
+    inset: calc(100% + 7px) 0 auto auto;
+    width: min(225px, 100%);
+    padding: 7px;
+    border: 1px solid currentColor;
+    border-radius: 16px;
+    background: var(--room-nav-surface);
+  }
+  .room-navigation[data-menu-open="true"] nav { display: grid; gap: 1px; }
+  .room-navigation nav a { padding-inline: 12px; font-size: 14px; }
+  .photo-experience:has(.room-navigation[data-menu-open="true"]) { min-height: 312px; }
 }
 .photo-room-shell {
   width: 100%;
@@ -94,6 +130,27 @@
 }
 .animated-photo.ready {
   opacity: 1;
+}
+.candle-fallback {
+  position: absolute;
+  width: 4%;
+  height: 6%;
+  left: 24.1%;
+  top: 75.45%;
+  translate: -50% -50%;
+  pointer-events: none;
+  background: radial-gradient(ellipse, #ffc06e88, transparent 70%);
+  mix-blend-mode: screen;
+  opacity: .3;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .candle-fallback { animation: candle-glow 1.9s ease-in-out infinite; }
+}
+@keyframes candle-glow {
+  0%, 100% { opacity: .32; transform: scale(.9, 1.03); }
+  32% { opacity: .54; transform: scale(1.04, .97); }
+  63% { opacity: .22; transform: scale(.96, .92); }
+  79% { opacity: .45; transform: scale(1, 1.07); }
 }
 .photo-chain,
 .photo-phone {
@@ -195,9 +252,9 @@
   gap: 10px;
   align-items: center;
   margin: 0 15px 12px 0;
-  font-size: clamp(16px, 1.6vw, 27px);
+  font-family: var(--wavo-heading);
+  font-size: clamp(15px, 1.55vw, 25px);
   font-weight: 400;
-  white-space: nowrap;
 }
 .phone-hint p {
   margin: 0;
@@ -278,7 +335,7 @@
   display: block;
 }
 .wavo-room-root {
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--wavo-body);
 }
 .wavo-room-root *,
 .wavo-room-root *::before,

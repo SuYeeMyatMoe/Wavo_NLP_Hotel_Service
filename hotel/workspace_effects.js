@@ -15,6 +15,112 @@ const revealTargets = [
   ".receipt-details > div",
 ].join(",");
 
+function watchGalleries(main) {
+  if (!main || !("IntersectionObserver" in window)) return () => {};
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+  const galleries = new Map();
+  const viewport = new IntersectionObserver((entries) => {
+    for (const { target, intersectionRatio } of entries) {
+      const gallery = galleries.get(target);
+      if (!gallery) continue;
+      gallery.visible = intersectionRatio >= .25;
+      schedule(gallery);
+    }
+  }, { threshold: .25 });
+
+  function scan() {
+    for (const element of galleries.keys()) {
+      if (main.contains(element)) continue;
+      clearTimeout(galleries.get(element).timer);
+      viewport.unobserve(element);
+      galleries.delete(element);
+    }
+    for (const element of main.querySelectorAll("[data-service-gallery]")) {
+      if (galleries.has(element)) continue;
+      const card = element.closest(".service-card");
+      const gallery = {
+        photos: [...element.querySelectorAll("img")],
+        toggle: card.querySelector("[data-gallery-toggle]"),
+        title: card.querySelector(".service-copy strong").textContent,
+        current: 0, playing: null, visible: false, timer: 0,
+      };
+      galleries.set(element, gallery);
+      updateControl(gallery);
+      card.querySelector(".service-gallery-controls").hidden = false;
+      viewport.observe(element);
+    }
+  }
+
+  function isPlaying(gallery) {
+    return gallery.playing ?? !reduced.matches;
+  }
+
+  function updateControl(gallery) {
+    const label = isPlaying(gallery) ? "Pause" : "Play";
+    gallery.toggle.textContent = label;
+    gallery.toggle.setAttribute("aria-label", `${label} ${gallery.title} slideshow`);
+  }
+
+  function schedule(gallery) {
+    clearTimeout(gallery.timer);
+    if (!gallery.visible || !isPlaying(gallery) || document.hidden) return;
+    gallery.timer = setTimeout(() => {
+      next(gallery);
+      schedule(gallery);
+    }, 5600);
+  }
+
+  function updatePlayback() {
+    for (const gallery of galleries.values()) {
+      updateControl(gallery);
+      schedule(gallery);
+    }
+  }
+
+  function next(gallery) {
+    const { photos, current } = gallery;
+    const index = (current + 1) % photos.length;
+    if (!photos[index].complete || !photos[index].naturalWidth) return;
+    photos[index].setAttribute("aria-hidden", "false");
+    photos[current].setAttribute("aria-hidden", "true");
+    gallery.current = index;
+  }
+
+  function click(event) {
+    const button = event.target.closest("button[data-gallery-toggle], button[data-gallery-next]");
+    if (!button) return;
+    const gallery = galleries.get(button.closest(".service-card").querySelector("[data-service-gallery]"));
+    if (!gallery) return;
+    if (button === gallery.toggle) gallery.playing = !isPlaying(gallery);
+    else {
+      gallery.playing = false;
+      next(gallery);
+    }
+    updateControl(gallery);
+    schedule(gallery);
+  }
+
+  const mutations = new MutationObserver((records) => {
+    if (records.some(({ addedNodes, removedNodes }) =>
+      [...addedNodes, ...removedNodes].some((node) => node instanceof Element &&
+        (node.matches("[data-service-gallery]") || node.querySelector("[data-service-gallery]"))))) scan();
+  });
+  mutations.observe(main, { childList: true, subtree: true });
+  scan();
+  main.addEventListener("click", click);
+  reduced.addEventListener("change", updatePlayback);
+  document.addEventListener("visibilitychange", updatePlayback);
+
+  return () => {
+    for (const gallery of galleries.values()) clearTimeout(gallery.timer);
+    viewport.disconnect();
+    mutations.disconnect();
+    main.removeEventListener("click", click);
+    reduced.removeEventListener("change", updatePlayback);
+    document.removeEventListener("visibilitychange", updatePlayback);
+  };
+}
+
 function watchWorkspace(main) {
   if (!main || !("IntersectionObserver" in window)) return () => {};
   const tracked = new Set();
@@ -106,6 +212,7 @@ export default function mount({ parentElement }) {
     }
   }
   const stopReveals = watchWorkspace(main);
+  const stopGalleries = watchGalleries(main);
   const viewport = new ResizeObserver(updateWorkspaceWidth);
   function updateWorkspaceWidth() {
     if (main?.clientWidth) main.style.setProperty("--wavo-workspace-width", main.clientWidth + "px");
@@ -157,7 +264,8 @@ export default function mount({ parentElement }) {
   }
 
   function trackCard(event) {
-    const card = event.target instanceof Element ? event.target.closest("[data-wavo-card]") : null;
+    const card = event.target instanceof Element && !event.target.closest(".service-gallery-controls")
+      ? event.target.closest("[data-wavo-card]") : null;
     if (card !== activeCard) {
       settleCard();
       activeCard = card;
@@ -217,6 +325,7 @@ export default function mount({ parentElement }) {
   function move(event) {
     if (reduced.matches || event.pointerType === "touch") return;
     trackCard(event);
+    if (event.composedPath().some((element) => element instanceof Element && element.matches(".mascot"))) return;
     const now = performance.now();
     const dx = event.clientX - lastX;
     const dy = event.clientY - lastY;
@@ -239,6 +348,7 @@ export default function mount({ parentElement }) {
     settleCard();
     viewport.disconnect();
     stopReveals();
+    stopGalleries();
     layer.remove();
     particles.clear();
     if (document[owner]?.dispose === dispose) delete document[owner];

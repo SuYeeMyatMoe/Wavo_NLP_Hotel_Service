@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { useReducedMotion } from "motion/react";
 import { PhotoRoom } from "./PhotoRoom";
@@ -18,6 +18,8 @@ function VintageRoom({
   entrance?: string;
   telephone: () => void;
 }) {
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [light, setLight] = useState(() => {
     const active = document.documentElement.dataset.wavoTheme;
     if (active) return active === "light";
@@ -42,12 +44,20 @@ function VintageRoom({
       aria-label="Wavo's interactive hotel room"
     >
       {entrance && (
-        <header className="room-navigation">
+        <header className="room-navigation" data-menu-open={menuOpen} onKeyDown={(event) => {
+          if (event.key !== "Escape" || !menuOpen) return;
+          setMenuOpen(false);
+          menuButton.current?.focus();
+        }}>
           <a className="room-brand" href="./" aria-label="Wavo">
-            <img src="app/static/wavo-icon.png" alt="" />
+            <span className="room-brand-mark" aria-hidden="true" />
             <span aria-hidden="true">avo</span>
           </a>
-          <nav aria-label="Hotel navigation">
+          <button ref={menuButton} className="room-menu-toggle" type="button" aria-controls="room-nav"
+            aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>Menu</button>
+          <nav id="room-nav" aria-label="Hotel navigation" onClick={() => setMenuOpen(false)}>
+            <a href="#about">About</a>
+            <a href="#how-to-use">How to use</a>
             <a href="#hotel-services">Hotel services</a>
             <a href="?login=staff">Staff entrance</a>
             <a className="room-guest-link" href={entrance}>Guest sign in</a>

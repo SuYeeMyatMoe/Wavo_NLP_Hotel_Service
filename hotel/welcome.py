@@ -6,8 +6,36 @@ import hmac
 from hotel.demo_accounts import ACCOUNTS as DEMO_ACCOUNTS, GUESTS
 from hotel.vintage_ui import room
 
-WORDMARK = '<span class="wavo-lockup" aria-hidden="true"><img src="app/static/wavo-icon.png" alt=""><span>avo</span></span>'
+WORDMARK = '<span class="wavo-lockup" aria-hidden="true"><span>avo</span></span>'
 BRAND = f'<a class="hotel-mark" href="./" target="_self" aria-label="Wavo">{WORDMARK}</a>'
+
+ROOM_PHOTOS = (
+    ("suite-lounge.jpg", "Suite lounge overlooking the city"),
+    ("suite-bedroom.webp", "Suite bedroom with a sitting area"),
+    ("guest-bedroom.jpg", "Guest bedroom lit by bedside lamps"),
+)
+RECEPTION_PHOTOS = (
+    ("lobby-lounge.jpg", "Hotel lobby seating around an indoor tree"),
+    ("reception-desk.jpg", "Reception desk beneath a hanging light installation"),
+)
+
+
+def service_card(title, detail, action, href, photos, order):
+    slides = "".join(
+        f'<img src="app/static/guest-gallery/{file}" alt="{alt}" decoding="async" '
+        f'aria-hidden="{str(index != 0).lower()}">'
+        for index, (file, alt) in enumerate(photos)
+    )
+    return f"""<div class="service-card" data-wavo-card data-wavo-reveal="{order}">
+      <a href="{href}" target="_self">
+        <div class="service-gallery" data-service-gallery>{slides}</div>
+        <div class="service-copy"><strong>{title}</strong><span>{detail}</span><b>{action}</b></div>
+      </a>
+      <div class="service-gallery-controls" hidden>
+        <button type="button" data-gallery-toggle aria-label="Pause {title} slideshow">Pause</button>
+        <button type="button" data-gallery-next aria-label="Next {title} photo">Next photo</button>
+      </div>
+    </div>"""
 
 
 def landing():
@@ -23,9 +51,23 @@ def landing():
           </div></section>
         <section class="hotel-services"><div class="section-head" data-wavo-reveal="0"><div><p class="hotel-overline">Hotel services</p><h2>During your stay</h2></div></div>
         <div class="service-images">
-          <div data-wavo-card data-wavo-reveal="1"><a href="?login=guest&amp;service=comfort" target="_self"><img src="app/static/room-detail.jpg" alt="Guest room with a wood-panelled headboard" loading="lazy" decoding="async"><div><strong>In-room service</strong><span>Repairs and housekeeping</span><b>Request room service</b></div></a></div>
-          <div data-wavo-card data-wavo-reveal="2"><a href="?login=guest" target="_self"><img src="app/static/reception.jpg" alt="Seating and warm lights in the hotel lobby" loading="lazy" decoding="async"><div><strong>Reception</strong><span>Hotel information and guest support</span><b>Contact reception</b></div></a></div>
+          {service_card("In-room service", "Repairs and housekeeping", "Request room service", "?login=guest&amp;service=comfort", ROOM_PHOTOS, 1)}
+          {service_card("Reception", "Hotel information and guest support", "Contact reception", "?login=guest", RECEPTION_PHOTOS, 2)}
         </div></section>
+        <div class="hotel-guide">
+          <section id="about" data-wavo-reveal="0">
+            <h2>About</h2>
+            <p>Wavo is your hotel concierge. Ask about the hotel, request help for your room, and follow updates as the hotel team handles your request.</p>
+          </section>
+          <section id="how-to-use" data-wavo-reveal="1">
+            <h2>How to use</h2>
+            <ol>
+              <li>Press the brass phone button and sign in to your guest account.</li>
+              <li>Tell the AI receptionist what you need, or choose a service from the menu.</li>
+              <li>Open <strong>Track request</strong> after your call to check for updates.</li>
+            </ol>
+          </section>
+        </div>
         <footer class="hotel-footer" data-wavo-reveal="0"><span role="img" aria-label="Wavo">{WORDMARK}</span></footer>""")
     st.stop()
 

@@ -62,6 +62,22 @@ export function createPhotoRenderer(
    float oldAlpha=matte(p),newAlpha=matte(src);
    if(oldAlpha>.001){brown=mix(brown,texture2D(brownPlate,uv).rgb,oldAlpha);day=mix(day,texture2D(lightPlate,uv).rgb,oldAlpha);}
    if(newAlpha>.001){brown=mix(brown,texture2D(clean,src/size).rgb,newAlpha);day=mix(day,texture2D(dayPhoto,src/size).rgb,newAlpha);}
+   // Keep the wick and glass rim still while the visible flame bends and breathes.
+   if(p.x>361.&&p.x<444.&&p.y>681.&&p.y<754.){
+    float flicker=.54*sin(time*9.)+.29*sin(time*15.7)+.17*sin(time*26.3);
+    float flame=oval(p,vec2(402.5,713.),vec2(10.,16.))*smoothstep(700.,705.,p.y);
+    float tip=clamp((728.-p.y)/26.,0.,1.);
+    if(flame>.001){
+     vec2 sway=vec2((2.7*sin(time*6.2)+1.35*flicker)*tip,1.7*flicker*tip);
+     vec2 flameUV=(p-sway*flame)/size;
+     brown=texture2D(clean,flameUV).rgb;
+     day=texture2D(dayPhoto,flameUV).rgb;
+    }
+    float halo=oval(p,vec2(402.5,710.),vec2(36.,31.));
+    vec3 warmth=vec3(.12,.057,.017)*halo*flicker;
+    brown+=warmth;
+    day+=warmth*.64;
+   }
   }
   float t=clamp((p.y-205.)/247.,0.,1.);float width=mix(102.,197.,t);float shade=(1.-smoothstep(width-4.,width+2.,abs(p.x-596.)))*smoothstep(198.,208.,p.y)*(1.-smoothstep(447.,461.,p.y));shade*=smoothstep(.42,.75,max(brown.r,max(brown.g,brown.b)));float glow=oval(p,vec2(568.,548.),vec2(200.,130.));brown*=.93-.28*shade-.10*glow;gl_FragColor=vec4(mix(brown,day,darkness),1.);
  }`;
@@ -137,13 +153,12 @@ export function createPhotoRenderer(
     lightBackground = plateTexture(lightPlate, 4, "lightPlate");
   gl.activeTexture(gl.TEXTURE0);
   const loc = {
-    chain: gl.getUniformLocation(program, "chain"),
     time: gl.getUniformLocation(program, "time"),
     dark: gl.getUniformLocation(program, "darkness"),
     motion: gl.getUniformLocation(program, "motion"),
   };
   return {
-    draw(x: number, y: number, time: number, dark: number, motion: boolean) {
+    draw(time: number, dark: number, motion: boolean) {
       const rect = canvas.getBoundingClientRect(),
         dpr = Math.min(devicePixelRatio, 1.5),
         w = Math.max(1, Math.round(rect.width * dpr)),
@@ -153,7 +168,6 @@ export function createPhotoRenderer(
         canvas.height = h;
         gl.viewport(0, 0, w, h);
       }
-      gl.uniform2f(loc.chain, x, y);
       gl.uniform1f(loc.time, time);
       gl.uniform1f(loc.dark, dark);
       gl.uniform1f(loc.motion, motion ? 1 : 0);

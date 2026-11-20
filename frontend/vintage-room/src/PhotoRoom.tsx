@@ -16,6 +16,7 @@ export function PhotoRoom({ light, reduced, onToggle, onPhone }: Props) {
     chainCanvas = useRef<HTMLCanvasElement>(null!),
     handle = useRef<HTMLButtonElement>(null!);
   const [ready, setReady] = useState(false);
+  const [photoRendered, setPhotoRendered] = useState(false);
   const [hintDismissed, setHintDismissed] = useState(false);
   const showHint = ready && !hintDismissed;
   const state = useRef({
@@ -78,7 +79,7 @@ export function PhotoRoom({ light, reduced, onToggle, onPhone }: Props) {
           const s = state.current,
             c = config.current;
           amount += (Number(c.light) - amount) * (1 - Math.exp(-dt * 4.5));
-          photo?.draw(0, 0, (now - start) / 1000, amount, !c.reduced);
+          photo?.draw((now - start) / 1000, amount, !c.reduced);
           const ball = chain!.draw(
             dt,
             s.tx,
@@ -96,6 +97,7 @@ export function PhotoRoom({ light, reduced, onToggle, onPhone }: Props) {
           handle.current.dataset.depth = ball.z.toFixed(1);
           if (!shown) {
             shown = true;
+            setPhotoRendered(photo !== null);
             setReady(true);
           }
           frame = requestAnimationFrame(animate);
@@ -171,9 +173,10 @@ export function PhotoRoom({ light, reduced, onToggle, onPhone }: Props) {
         />
         <canvas
           ref={canvas}
-          className={`animated-photo ${ready ? "ready" : ""}`}
+          className={`animated-photo ${photoRendered ? "ready" : ""}`}
           aria-hidden="true"
         />
+        {ready && !photoRendered && <span className="candle-fallback" aria-hidden="true" />}
         <canvas
           ref={chainCanvas}
           className="chain-3d-canvas"
