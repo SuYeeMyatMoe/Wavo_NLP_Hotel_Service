@@ -12,6 +12,32 @@ from hotel import readiness, startup
 from hotel.resources import singleton
 
 
+def test_wake_keeps_cold_request_open(monkeypatch):
+    from types import SimpleNamespace
+    now = [0.0]
+    def request(method, url, **kwargs):
+        assert method == "GET" and url.endswith("/healthz")
+        assert kwargs["timeout"][1] >= 25
+        now[0] += 25
+        return SimpleNamespace(ok=True, json=lambda: {"status": "ok"})
+    monkeypatch.setattr(readiness, "request", request)
+    readiness.wait_for_api("https://api.test", clock=lambda: now[0], sleep=lambda _: pytest.fail("Already ready"))
+    assert now[0] == 25
+
+
+def test_long_wake_reads_stay_within_total_deadline(monkeypatch):
+    now, timeouts = [0.0], []
+    def request(method, url, **kwargs):
+        timeouts.append(kwargs["timeout"])
+        now[0] += sum(kwargs["timeout"])
+        raise requests.Timeout("Still sleeping")
+    monkeypatch.setattr(readiness, "request", request)
+    with pytest.raises(requests.Timeout):
+        readiness.wait_for_api("https://api.test", clock=lambda: now[0], sleep=lambda n: now.__setitem__(0, now[0] + n))
+    assert now[0] == 120
+    assert timeouts == [(5, 60), (5, 48)]
+
+
 def test_wake_is_shared_and_reused_only_for_sixty_seconds(monkeypatch):
     entered, release = Event(), Event()
     now, calls = [0.0], []

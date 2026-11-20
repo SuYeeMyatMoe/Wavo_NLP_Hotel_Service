@@ -2,6 +2,7 @@
 
 import os
 import time
+import logging
 import requests
 from concurrent.futures import Future, TimeoutError as FutureTimeout
 from dataclasses import dataclass
@@ -11,17 +12,27 @@ from hotel.http_client import request
 
 def wait_for_api(url, *, timeout=120, clock=time.monotonic, sleep=time.sleep):
     deadline = clock() + timeout
+    attempts, last_failure = 0, "not_started"
     while clock() < deadline:
+        attempts += 1
         remaining = deadline - clock()
+        # Render may need tens of seconds before forwarding the first request.
+        # Keep that wake request open instead of repeatedly aborting it at 5s.
+        connect_timeout = min(5, remaining / 2)
         try:
             response = request(
-                "GET", url.rstrip("/") + "/healthz", timeout=min(5, remaining / 2)
+                "GET", url.rstrip("/") + "/healthz",
+                timeout=(connect_timeout, min(60, remaining - connect_timeout)),
             )
             if response.ok and response.json().get("status") == "ok":
                 return
-        except (requests.RequestException, ValueError, AttributeError):
-            pass
+            last_failure = "not_ready"
+        except (requests.RequestException, ValueError, AttributeError) as exc:
+            last_failure = type(exc).__name__
         sleep(max(0, min(2, deadline - clock())))
+    logging.getLogger(__name__).warning(
+        "API readiness deadline reached: attempts=%d last_failure=%s", attempts, last_failure
+    )
     raise requests.Timeout("Hotel service is still starting. Please try again shortly.")
 
 
