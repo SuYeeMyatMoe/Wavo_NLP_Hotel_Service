@@ -404,14 +404,12 @@ def decide(state):
             eta = wait_time(db, n, department)
             ref = dispatch(db, n, previous)
             routed = db.one(
-                "SELECT department,analysis FROM tickets WHERE id=?", (ref,)
-            )
-            assignment = db.one(
-                "SELECT a.id,r.name FROM task_assignments a JOIN staff_roster r ON r.staff=a.staff WHERE a.ticket=? AND a.active=1",
+                "SELECT t.department,t.analysis,a.id AS assignment FROM tickets t "
+                "LEFT JOIN task_assignments a ON a.ticket=t.id AND a.active=1 WHERE t.id=?",
                 (ref,),
             )
             if (
-                not assignment
+                not routed["assignment"]
                 or json.loads(routed["analysis"]).get("service_mode")
                 == "reception_review"
             ):
@@ -576,21 +574,24 @@ def process_turn(
     result = {"db": db, "case": n, "original": original, "english": english}
     result.update(prepared if prepared is not None else classify(result))
     result.update(decide(result))
-    case_notes.record_turn(db, n, turn_id, original, english, result["analysis"])
     from hotel.operations import audit
 
-    final = n
-    audit(
-        db,
-        n["hotel"],
-        final["ticket"],
-        "NLP / Reception",
-        "Processed guest turn",
-        f"{result['analysis']['urgency']} · {result['analysis']['department']} · {final['outcome']}",
-        f"turn:{key}:{turn_id}",
-        guest["id"],
-    )
-    return final
+    keep = case_notes.consented(db, key)
+    with db.batch():
+        case_notes.record_turn(
+            db, n, turn_id, original, english, result["analysis"], keep=keep
+        )
+        audit(
+            db,
+            n["hotel"],
+            n["ticket"],
+            "NLP / Reception",
+            "Processed guest turn",
+            f"{result['analysis']['urgency']} · {result['analysis']['department']} · {n['outcome']}",
+            f"turn:{key}:{turn_id}",
+            guest["id"],
+        )
+    return n
 
 
 def finish(db, key):

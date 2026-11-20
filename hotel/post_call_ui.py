@@ -37,6 +37,30 @@ def confirmation(ref, version, prefix):
                 st.rerun()
 
 
+def service_rating(ref, saved, prefix, language):
+    from hotel.guest_copy import label
+
+    if saved is not None:
+        st.success(
+            label("Thank you. Your rating is {stars}/5 stars.", language).format(
+                stars=saved
+            )
+        )
+        return
+    st.write(label("How was the service? (optional)", language))
+    stars = st.feedback("stars", key=f"{prefix}_stars_{ref}")
+    if (
+        st.button(
+            label("Send rating", language),
+            key=f"{prefix}_rate_{ref}",
+            disabled=stars is None,
+        )
+        and stars is not None
+    ):
+        request("POST", f"/tickets/{ref}/feedback", json={"value": f"{stars + 1}/5"})
+        st.rerun()
+
+
 def dismiss_receipt():
     state = st.session_state
     from hotel.post_call_state import dismiss_pending
@@ -124,6 +148,13 @@ def receipt(key, jump, call=True):
         if result.get("awaiting_confirmation"):
             st.info("The team reports the work is complete. Is everything working now?")
             confirmation(result["ticket"], result["work_version"], "receipt_" + key)
+        elif result.get("ticket") and result.get("status") in {"Resolved", "Closed"}:
+            service_rating(
+                result["ticket"],
+                result.get("rating"),
+                "receipt",
+                request("GET", "/me")["language"],
+            )
         elif result["outcome"] in {"Your request is assigned", "In progress"}:
             estimate_line(result["completion_estimate"])
             st.caption("Assigned → In progress → Awaiting your confirmation → Resolved")

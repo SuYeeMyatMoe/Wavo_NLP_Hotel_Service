@@ -26,6 +26,13 @@ def history(jump):
     st.caption(
         "Your calls and requests, together. Follow progress and confirm when everything is fixed."
     )
+    # Streamlit removes widget state while the dedicated detail page is open.
+    for key, value in zip(
+        ("history_source", "history_status", "history_search"),
+        st.session_state.get("history_filters", ("All", "All", "")),
+    ):
+        if key not in st.session_state:
+            st.session_state[key] = value
     with st.container(horizontal=True):
         source = st.selectbox(
             "Source", ["All", "Call", "Text", "Voice message"], key="history_source"
@@ -63,7 +70,7 @@ def history(jump):
     )
     rows = result["items"]
     st.caption(
-        f"{result['total']} matching calls and requests · Select Open to see details below."
+        f"{result['total']} matching calls and requests · Select Open to view a record."
     )
     if not rows:
         st.info("No matching calls or requests yet.")

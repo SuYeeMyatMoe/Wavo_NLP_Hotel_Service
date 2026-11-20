@@ -71,7 +71,7 @@ def request(method, path, *, optional=False, **kwargs):
                     180
                     if method != "GET"
                     and (
-                        path in {"/voice-messages", "/tickets"}
+                        path in {"/voice-messages", "/tickets", "/work-assistant/turns"}
                         or path.endswith(("/turn", "/utterance"))
                     )
                     else 8

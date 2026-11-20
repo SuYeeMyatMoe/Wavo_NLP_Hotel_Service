@@ -505,13 +505,23 @@ def staff_work_status(ref, version, status):
     st.caption(ref + " · " + status)
 
 
+def confirm_guest_work(ref, version, resolved):
+    result = request(
+        "POST",
+        f"/tickets/{ref}/confirm",
+        json={"version": version, "resolved": resolved},
+    )
+    if resolved:
+        st.success(tr(result["status"]))
+
+
 def ticket_view(guest):
     ref = S.get("selected_ticket")
     if not ref:
         st.rerun()
     t = request("GET", "/tickets/" + ref)
     work = t["work"]
-    if st.button(tr("Close details") if guest else tr("Back to requests")):
+    if st.button(tr("Back to requests")):
         jump("My requests" if guest else "My work")
     heading = ("Room " + t["room"] + " · " if t["room"] else "") + t["department"]
     if guest:
@@ -587,42 +597,33 @@ def ticket_view(guest):
                     (True, "Yes, fixed"),
                     (False, "Still not working"),
                 ]:
-                    if st.button(
-                        tr(title), type="primary" if resolved else "secondary"
-                    ):
-                        request(
-                            "POST",
-                            f"/tickets/{ref}/confirm",
-                            json={"version": work["version"], "resolved": resolved},
-                        )
-                        st.rerun()
+                    st.button(
+                        tr(title),
+                        type="primary" if resolved else "secondary",
+                        on_click=confirm_guest_work,
+                        args=(ref, work["version"], resolved),
+                    )
         elif t["status"] in {"Resolved", "Closed"}:
-            choice = st.selectbox(
-                tr("How was the service?"),
-                ["Satisfied", "Needs attention"],
-                format_func=tr,
-            )
-            if st.button(tr("Send feedback")):
-                request("POST", f"/tickets/{ref}/feedback", json={"value": choice})
-                st.rerun()
-        for call in request("GET", "/calls"):
-            if call["ticket"] == ref and call.get("outcome") in {
-                "ETA changed",
-                "Room approval needed",
-                "Move approved",
-                "Move declined",
-            }:
-                case = request("GET", f"/calls/{call['id']}/utterance")
-                st.info(case["reply"])
-                if (
-                    call["outcome"] == "ETA changed"
-                    and "same-category room is ready" in call["reply"]
-                    and t["status"]
-                    not in {"Resolved", "Closed", "Awaiting confirmation"}
-                ):
-                    if st.button(tr("Request a room move")):
-                        request("POST", f"/calls/{call['id']}/move-request")
-                        st.rerun()
+            from hotel.post_call_ui import service_rating
+
+            service_rating(ref, t.get("rating"), "request", me["language"])
+        for call in t.get("call_updates", []):
+            reply = call["reply"]
+            if call["language"] != "en":
+                reply = request(
+                    "GET",
+                    f"/calls/{call['id']}/utterance",
+                    params={"include_audio": False},
+                )["reply"]
+            st.info(reply)
+            if (
+                call["outcome"] == "ETA changed"
+                and "same-category room is ready" in call["reply"]
+                and t["status"] not in {"Resolved", "Closed", "Awaiting confirmation"}
+            ):
+                if st.button(tr("Request a room move")):
+                    request("POST", f"/calls/{call['id']}/move-request")
+                    st.rerun()
     if guest:
         from hotel.guest_history_ui import related_calls
 
@@ -1243,10 +1244,10 @@ elif page in {"All tasks", "My work"}:
 elif page == "My requests":
     from hotel.guest_history_ui import history
 
-    history(jump)
     if S.get("selected_ticket"):
-        with st.container(border=True, key="guest_request_details"):
-            guest_ticket_view()
+        guest_ticket_view()
+    else:
+        history(jump)
 else:
     more()
 

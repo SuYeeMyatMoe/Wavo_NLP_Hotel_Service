@@ -236,6 +236,7 @@ def ticket_result(db, p, ref):
         room=t["room"],
         problem=problem_label(a.get("extraction", {})),
         status=t["status"],
+        rating=work_orders.guest_rating(db, ref) if resolved else None,
         work_version=work_orders.current(db, t["id"])["version"],
         awaiting_confirmation=snap["awaiting_confirmation"],
         assignment={"name": assignment["name"], "department": t["department"]}

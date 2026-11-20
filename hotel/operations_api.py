@@ -23,6 +23,11 @@ class Clarification(BaseModel):
     agreement: bool = False
 
 
+class CompletionClick(BaseModel):
+    key: UUID
+    version: int = Field(ge=0)
+
+
 class Roster(BaseModel):
     staff: str
     name: str = Field(min_length=1, max_length=80)
@@ -58,6 +63,47 @@ def manager(db, actor):
 
 
 def register(app, context, identity):
+    @app.post("/tickets/{ref}/done")
+    def report_done(ref: str, body: CompletionClick, actor=Depends(identity)):
+        from hotel import operations, work_orders
+
+        with store.transaction() as db:
+            p = store.profile(db, actor)
+            if p["role"] not in store.STAFF:
+                raise PermissionError("Staff access required.")
+            ticket = work_orders.locked(db, p, ref)
+            key = str(body.key)
+            prior = db.one(
+                "SELECT ticket,staff,outcome FROM service_outcomes WHERE id=?", (key,)
+            )
+            if prior:
+                if (prior["ticket"], prior["staff"], prior["outcome"]) != (
+                    ref,
+                    actor,
+                    "Fixed",
+                ):
+                    raise ValueError("This submission key is already used.")
+                return {"saved": True}
+            work = operations.report_context(db, ref)
+            if not work or work["owner"] != actor:
+                raise PermissionError(
+                    "Only the assigned worker can mark this work done."
+                )
+            if work["version"] != body.version or operations.awaiting_confirmation(
+                work
+            ):
+                raise ValueError("This task changed. Refresh to see its status.")
+            operations.reported(
+                db,
+                p,
+                ticket,
+                "complete",
+                key,
+                source="Staff completion button",
+                context=work,
+            )
+            return {"saved": True}
+
     @app.post("/tickets/{ref}/clarify")
     def clarify_request(ref: str, body: Clarification, actor=Depends(identity)):
         from hotel.request_updates import clarify
@@ -108,16 +154,30 @@ def register(app, context, identity):
             if store.profile(db, actor)["role"] not in store.STAFF:
                 raise PermissionError("Staff access required.")
         text = body.text.strip()
-        if body.audio:
+        original = ""
+        if body.audio and not text:
             from hotel.languages import transcribe_auto, wav_bytes, to_english
 
-            original, language = transcribe_auto(wav_bytes(body.audio), "en")
-            text = to_english(original, language)
+            raw = wav_bytes(body.audio)
+            try:
+                original, language = transcribe_auto(raw, "en")
+                text = to_english(original, language) if original.strip() else ""
+            except (ImportError, OSError, RuntimeError) as exc:
+                raise ValueError(
+                    "Speech recognition or translation is unavailable. Retry or type your update."
+                ) from exc
+            if not text.strip():
+                return {
+                    "changed": False,
+                    "reply": "No clear work update was recognized. Record again or type your update.",
+                    "recognized": original,
+                }
         if not text:
             raise ValueError("Speak or type a work update.")
-        return work_assistant.submit(
+        result = work_assistant.submit(
             actor, str(body.turn_id), text, body.ref, body.version
         )
+        return {**result, "recognized": original} if original else result
 
     @app.get("/notifications")
     def notifications(ctx=Depends(context)):
@@ -157,6 +217,16 @@ def register(app, context, identity):
             query += " AND EXISTS(SELECT 1 FROM ticket_work w WHERE w.ticket=a.ticket AND w.owner=?)"
             args.append(p["id"])
         return db.all(query + " ORDER BY a.created DESC LIMIT 100", args)
+
+    @app.get("/tickets/{ref}/outcomes")
+    def ticket_outcomes(ref: str, ctx=Depends(context)):
+        from hotel.work_orders import outcomes
+
+        db, p = ctx
+        if p["role"] not in store.STAFF:
+            raise PermissionError("Staff access required.")
+        store.ticket(db, p, ref)
+        return outcomes(db, ref)
 
     @app.get("/tickets/{ref}/assignments")
     def assignments(ref: str, ctx=Depends(context)):

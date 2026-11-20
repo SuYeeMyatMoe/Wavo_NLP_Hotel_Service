@@ -35,6 +35,7 @@ def connected():
 class DB:
     def __init__(self, connection, pg):
         self.connection, self.pg = connection, pg
+        self._batch_active = False
 
     def run(self, query, args=()):
         started = perf_counter()
@@ -55,9 +56,16 @@ class DB:
     @contextmanager
     def batch(self):
         """Batch dependent-order writes whose results are not needed until exit."""
+        if self._batch_active:
+            yield
+            return
         with database_batch():
             with self.connection.pipeline() if self.pg else nullcontext():
-                yield
+                self._batch_active = True
+                try:
+                    yield
+                finally:
+                    self._batch_active = False
 
 
 @contextmanager
@@ -369,11 +377,12 @@ def create(db, p, analysis, key, source, room):
     )
     if not inserted.rowcount:
         return create(db, p, analysis, key, source, room)
-    db.run(
-        "INSERT INTO nlp_analysis VALUES(?,?,?,?,?,?,?)",
-        (str(uuid4()), p["hotel"], None, ref, "", json.dumps(analysis), now()),
-    )
-    record(db, ref, "Request received", p["id"])
+    with db.batch():
+        db.run(
+            "INSERT INTO nlp_analysis VALUES(?,?,?,?,?,?,?)",
+            (str(uuid4()), p["hotel"], None, ref, "", json.dumps(analysis), now()),
+        )
+        record(db, ref, "Request received", p["id"])
     from hotel.operations import dispatch
 
     dispatch(db, ref)

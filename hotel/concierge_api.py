@@ -301,7 +301,7 @@ def register(app, context, identity, staff):
         )
 
     @app.get("/calls/{key}/utterance")
-    def utterance(key: str, actor=Depends(identity)):
+    def utterance(key: str, actor=Depends(identity), include_audio: bool = True):
         from hotel.languages import translate
         from hotel.speech import speak
 
@@ -311,7 +311,11 @@ def register(app, context, identity, staff):
         line = n["reply"]
         if line != c.GREETINGS[lang] and lang != "en":
             line = translate(line, "en", lang)
-        return {"reply": line, "wav": speak(line, lang), "version": n["version"]}
+        return {
+            "reply": line,
+            "wav": speak(line, lang) if include_audio else "",
+            "version": n["version"],
+        }
 
     @app.post("/desk/cases/{key}/eta")
     def eta(key: str, body: Estimate, ctx=Depends(context)):

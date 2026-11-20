@@ -20,10 +20,30 @@ def current(db, ref):
 
 
 def locked(db, p, ref):
-    store.ticket(db, p, ref)
-    return db.one(
-        "SELECT * FROM tickets WHERE id=?" + (" FOR UPDATE" if db.pg else ""), (ref,)
+    query = "SELECT t.* FROM tickets t WHERE t.id=? AND t.hotel=?"
+    args = [ref, p["hotel"]]
+    if p["role"] == "staff":
+        query += " AND EXISTS(SELECT 1 FROM ticket_work w WHERE w.ticket=t.id AND w.owner=?)"
+        args.append(p["id"])
+    elif p["role"] not in store.STAFF:
+        query += " AND t.guest=?"
+        args.append(p["id"])
+    ticket = db.one(
+        query + (" FOR UPDATE OF t" if db.pg else ""), args
     )
+    if not ticket:
+        raise PermissionError("Request unavailable.")
+    return ticket
+
+
+def guest_rating(db, ref):
+    row = db.one(
+        "SELECT action FROM events WHERE ticket=? AND action IN ("
+        "'Guest feedback: 1/5','Guest feedback: 2/5','Guest feedback: 3/5',"
+        "'Guest feedback: 4/5','Guest feedback: 5/5') ORDER BY created DESC,id DESC LIMIT 1",
+        (ref,),
+    )
+    return int(row["action"][-3]) if row else None
 
 
 def start(db, p, ref):
@@ -147,11 +167,13 @@ def confirm(db, p, ref, version, resolved, note=""):
     )
     from hotel import operations
 
-    operations.confirmed(db, p, ref, version, resolved)
+    operations.confirmed(db, p, t, version, resolved)
+    if resolved:
+        return {"status": "Resolved"}
     return {"status": db.one("SELECT status FROM tickets WHERE id=?", (ref,))["status"]}
 
 
-def context(db, p, t):
+def context(db, p, t, *, include_outcomes=True):
     a = t["analysis"]
     if isinstance(a, str):
         a = json.loads(a)
@@ -183,11 +205,15 @@ def context(db, p, t):
         **work,
         "extraction": extracted,
         "solution": suggest(db, p["hotel"], extracted, t["urgency"]),
-        "outcomes": db.all(
-            "SELECT staff,outcome,action,note,created FROM service_outcomes WHERE ticket=? ORDER BY created,id",
-            (t["id"],),
-        ),
+        "outcomes": outcomes(db, t["id"]) if include_outcomes else [],
     }
+
+
+def outcomes(db, ref):
+    return db.all(
+        "SELECT staff,outcome,action,note,created FROM service_outcomes WHERE ticket=? ORDER BY created,id",
+        (ref,),
+    )
 
 
 def seed_demo(db):
