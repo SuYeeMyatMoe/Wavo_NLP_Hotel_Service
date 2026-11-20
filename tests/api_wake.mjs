@@ -12,11 +12,12 @@ globalThis.fetch = (url, options) => {
 globalThis.setTimeout = (callback, ms) => { timers.push({callback, ms}); return timers.length; };
 globalThis.clearTimeout = id => cleared.push(id);
 
-const parentElement = {dataset: {}};
+const parentElement = {host: {dataset: {}}};
 const data = {url: "https://api.test/healthz", nonce: "public-nonce", timeoutMs: 90000};
 wake({data: null, parentElement});
 wake({data, parentElement});
 wake({data, parentElement});
+wake({data, parentElement: parentElement.host});
 assert.equal(calls.length, 1);
 assert.equal(calls[0].url, "https://api.test/healthz?_wavo_wake=public-nonce");
 assert.equal(calls[0].options.method, "GET");

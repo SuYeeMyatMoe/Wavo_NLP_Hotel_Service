@@ -2,8 +2,9 @@
 // The coordinator grants one public browser request per shared readiness task.
 // This is a wake hint only: the server still verifies health and authorization.
 export default function ({data, parentElement}) {
-  if (!data?.url || !data?.nonce || parentElement.dataset.wake === data.nonce) return;
-  parentElement.dataset.wake = data.nonce;
+  const host = parentElement.host || parentElement;
+  if (!data?.url || !data?.nonce || host.dataset.wake === data.nonce) return;
+  host.dataset.wake = data.nonce;
   const url = new URL(data.url);
   url.searchParams.set("_wavo_wake", data.nonce);
   const controller = new AbortController();
