@@ -1,8 +1,9 @@
 """Bundled LiveKit component; the browser owns its cancellable media session."""
 
 import streamlit as st
-from hotel.nlp import ROOT
-from hotel.vintage_ui import concierge_asset
+from hotel.vintage_ui import HERE, concierge_asset
+
+ROOT = HERE.parent
 
 CALL_STYLES = "\n".join(
     concierge_asset(name)

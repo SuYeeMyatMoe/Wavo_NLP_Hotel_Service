@@ -131,7 +131,7 @@
 .wavo-lockup > span { margin-inline-start: -.065em; }
 .hotel-mark .wavo-lockup { font-size: clamp(2.05rem, 3vw, 2.75rem); }
 [data-wavo-theme="light"] .public-nav :is(.nav-login, .hotel-mark) { color: var(--ink); }
-.stApp .st-key-nav { border-bottom: 1px solid var(--line); }
+.stApp .st-key-workspace_nav { border-bottom: 1px solid var(--line); }
 .stApp [data-testid="stSegmentedControl"] button { border-color: var(--line); }
 .stApp [data-testid="stForm"], .stApp [data-testid="stVerticalBlockBorderWrapper"] {
   border-color: var(--line);
@@ -271,7 +271,95 @@
   }
 }
 
-.login-photo { border: 1px solid var(--line); }
+.stApp:has(.st-key-hotel_login) .block-container > [data-testid="stVerticalBlock"] {
+  min-height: calc(100svh - 5rem);
+  justify-content: center;
+}
+.stApp .st-key-hotel_login {
+  width: min(100%, 590px);
+  margin: 12px auto 0;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--glass-line);
+  border-radius: 20px;
+  box-shadow: var(--glass-shadow);
+}
+.login-banner {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 166px;
+  padding: clamp(18px, 5vw, 34px);
+  background: var(--raised);
+  border-bottom: 1px solid var(--glass-line);
+}
+.login-banner::before,
+.login-banner::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+}
+.login-banner::before {
+  inset: -6px;
+  background: var(--login-photo) right center / cover no-repeat;
+  filter: blur(5px);
+}
+.login-banner[data-entrance="guest"] { --login-photo: url("app/static/room-detail.jpg"); }
+.login-banner[data-entrance="staff"] { --login-photo: url("app/static/reception.jpg"); }
+.login-banner::after {
+  background: linear-gradient(90deg, var(--raised) 15%, color-mix(in srgb, var(--raised) 94%, transparent) 57%, color-mix(in srgb, var(--raised) 28%, transparent) 100%);
+}
+.login-banner h1 {
+  font-size: clamp(28px, 5vw, 42px);
+  margin: 12px 0 4px;
+}
+.login-banner p { margin: 0; max-width: 34ch; font-size: .9rem; }
+.login-banner .hotel-mark { width: fit-content; color: var(--ink); text-decoration: none; }
+.login-banner .wavo-lockup { font-size: 1.86rem; }
+.st-key-login_fields { padding: clamp(16px, 5vw, 30px); }
+.stApp .st-key-login_fields [data-testid="stForm"] {
+  padding: 0;
+  border: 0;
+  background: transparent !important;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.login-links {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 2px 18px;
+}
+.login-links a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: var(--gold);
+  font-size: .86rem;
+  text-underline-offset: 4px;
+}
+.st-key-workspace_nav [role="group"] { flex-wrap: wrap; }
+.st-key-workspace_nav button { white-space: normal; }
+.stApp :is(.st-key-dashboard_summary, .st-key-analytics_summary, .st-key-analytics_outcomes) {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.stApp :is(.st-key-dashboard_summary, .st-key-analytics_summary, .st-key-analytics_outcomes) [data-testid="stMetricLabel"] p {
+  white-space: normal;
+}
+@media (max-width: 760px) {
+  .stApp :is(.st-key-dashboard_summary, .st-key-analytics_summary, .st-key-analytics_outcomes) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.st-key-guest_lobby .st-key-guest_vintage_room {
+  width: 100%;
+  margin-inline: 0;
+  overflow: hidden;
+  border-radius: 12px;
+}
 .stApp [data-wavo-panel],
 .stApp [data-testid="stForm"],
 .stApp .st-key-guest_welcome,

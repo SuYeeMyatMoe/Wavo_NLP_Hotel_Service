@@ -52,7 +52,7 @@ function watchGalleries(main) {
     gallery.timer = setTimeout(() => {
       next(gallery);
       schedule(gallery);
-    }, 5600);
+    }, 3300);
   }
 
   function updatePlayback() {

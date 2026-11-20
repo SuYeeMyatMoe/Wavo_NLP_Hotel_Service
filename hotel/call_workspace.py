@@ -45,6 +45,16 @@ def staff_calls(profile, evidence, jump):
     if not history:
         st.caption("No calls yet.")
         return
+    search = st.text_input("Find a call", placeholder="Room or summary", key="call_search")
+    query = search.strip().casefold()
+    if query:
+        history = [
+            c for c in history
+            if query in f"{c['room']} {c['summary'] or ''}".casefold()
+        ]
+    if not history:
+        st.info("No calls match your search.")
+        return
     ids = tuple(c["id"] for c in history)
 
     def open_record():
@@ -65,6 +75,7 @@ def staff_calls(profile, evidence, jump):
             for c in history
         ],
         hide_index=True,
+        column_order=["Room", "Action", "Summary", "Outcome", "Date (UTC)", "Direction"],
         row_height=48,
         height=min(460, 55 + len(history) * 48),
         alt="Call history with room, summary, outcome and an Open call button",

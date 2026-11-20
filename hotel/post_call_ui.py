@@ -3,6 +3,7 @@
 from html import escape
 from uuid import uuid4
 import streamlit as st
+from hotel.ui_copy import words
 from hotel.ui_client import request, _cache
 
 PROGRESS = (
@@ -19,7 +20,7 @@ def receipt_details(result):
     team = person.get("department", "")
     handler = f"{name} · {team}" if team and team not in name else name
     fields = (
-        ("receipt-problem", "Request", result["problem"]),
+        ("receipt-problem", "Request", words(result["problem"])),
         ("receipt-room", "Room", result["room"]),
         ("receipt-handler", "Handled by", handler),
     )

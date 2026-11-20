@@ -3,6 +3,7 @@
 import json
 import pandas as pd
 import streamlit as st
+from hotel.ui_copy import words
 from hotel.ui_client import request
 
 
@@ -16,7 +17,7 @@ def context(a):
     intent = a.get("intent", {})
     sentiment = a.get("sentiment", {})
     with st.container(horizontal=True):
-        st.metric("Intent", intent.get("label", "Not recorded").title())
+        st.metric("Intent", words(intent.get("label", "Not recorded")).title())
         st.metric("Sentiment", sentiment.get("label", "Not recorded").title())
     if intent.get("ambiguous"):
         st.info(intent["question"])
@@ -67,7 +68,12 @@ def evaluation():
                 for label, metrics in report.items()
                 if isinstance(metrics, dict)
             }
-        ).T,
+        ).T.rename(
+            columns={
+                "precision": "Precision", "recall": "Recall",
+                "f1-score": "F1 score", "support": "Sample size",
+            },
+        ),
         width="stretch",
     )
     with st.expander("Champion confusion matrix"):
@@ -148,7 +154,7 @@ def note_review(key, record):
                 [
                     {
                         "Turn": i + 1,
-                        "Intent": a.get("intent", {}).get("label"),
+                        "Intent": words(a.get("intent", {}).get("label")),
                         "Sentiment": a.get("sentiment", {}).get("label"),
                         "Urgency": a.get("urgency"),
                         "Department": a.get("department"),
@@ -224,7 +230,7 @@ def procedures(manager):
             placeholder="Leave blank if unknown",
         )
         st.caption(
-            "Includes waiting and service time. This is a guest-facing estimate, separate from arrival and internal deadlines."
+            "Includes waiting and service time. This estimate is shown to guests. Arrival and internal deadlines are tracked separately."
         )
         if st.form_submit_button("Save procedure", type="primary"):
             pairs = [

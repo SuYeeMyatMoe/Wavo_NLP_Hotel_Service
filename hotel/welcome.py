@@ -1,7 +1,9 @@
 """Public hotel entrance and local demonstration sign-in."""
 
-import streamlit as st
 import hmac
+from contextlib import contextmanager
+
+import streamlit as st
 
 from hotel.demo_accounts import ACCOUNTS as DEMO_ACCOUNTS, GUESTS
 from hotel.vintage_ui import room
@@ -42,12 +44,12 @@ def landing():
           <div class="shortcut-grid">
             <div data-wavo-card data-wavo-reveal="1"><a href="?login=guest&amp;service=comfort" target="_self">{service_icon("bed")}<span>Room comfort</span></a></div>
             <div data-wavo-card data-wavo-reveal="2"><a href="?login=guest&amp;service=housekeeping" target="_self">{service_icon("sparkle")}<span>Housekeeping</span></a></div>
-            <div data-wavo-card data-wavo-reveal="3"><a href="?login=guest&amp;service=wifi" target="_self">{service_icon("wifi")}<span>Wi-Fi help</span></a></div>
+            <div data-wavo-card data-wavo-reveal="3"><a href="?login=guest&amp;service=wifi" target="_self">{service_icon("wifi")}<span>WiFi help</span></a></div>
             <div data-wavo-card data-wavo-reveal="4"><a href="?login=guest&amp;service=special" target="_self">{service_icon("bell")}<span>Special requests</span></a></div>
           </div></section>
         <section class="hotel-services"><div class="section-head" data-wavo-reveal="0"><div><p class="hotel-overline">Hotel services</p><h2>During your stay</h2></div></div>
         <div class="service-images">
-          {service_card("In-room service", "Repairs and housekeeping", "Request room service", "?login=guest&amp;service=comfort", ROOM_PHOTOS, 1)}
+          {service_card("Room service", "Repairs and housekeeping", "Request room service", "?login=guest&amp;service=comfort", ROOM_PHOTOS, 1)}
           {service_card("Reception", "Hotel information and guest support", "Contact reception", "?login=guest", RECEPTION_PHOTOS, 2)}
         </div></section>
         <footer class="hotel-footer" data-wavo-reveal="0">
@@ -79,26 +81,29 @@ def fill_demo_account(role):
     st.session_state["demo_password_" + role] = password
 
 
+@contextmanager
+def login_card(role):
+    guest = role == "guest"
+    who, other = ("Guest", "staff") if guest else ("Staff", "guest")
+    with st.container(key="hotel_login", border=True):
+        st.html(
+            f'<header class="login-banner" data-entrance="{role}">{BRAND}'
+            f'<h1>{who} sign in</h1><p>Sign in to your hotel workspace.</p></header>'
+        )
+        with st.container(key="login_fields"):
+            yield
+            st.html(
+                '<nav class="login-links" aria-label="Hotel entrances">'
+                '<a href="./" target="_self">Back to hotel</a>'
+                f'<a href="?login={other}" target="_self">{other.title()} entrance</a>'
+                '</nav>'
+            )
+
+
 def demo_login(role):
     guest = role == "guest"
-    who = "Guest" if guest else "Staff"
-    st.html(
-        f'<header class="public-nav">{BRAND}<a href="./" target="_self">Back to hotel</a></header>'
-    )
-    left, right = st.columns([1, 1], gap="large", vertical_alignment="center")
-    with left:
-        img = "guest-suite" if guest else "reception"
-        st.html(
-            f'<img class="login-photo" src="app/static/{img}.jpg" alt="Hotel interior" loading="lazy" decoding="async">'
-        )
-    with right:
+    with login_card(role):
         st.caption("LOCAL DEMO")
-        st.title(who + " sign in")
-        st.write(
-            "Sign in to get help for the room linked to your reservation."
-            if guest
-            else "View assigned work or sign in as a supervisor."
-        )
         if guest:
             from hotel import store
 
@@ -130,7 +135,7 @@ def demo_login(role):
             args=(role,),
             icon=":material/person:",
         )
-        with st.form("demo_login_" + role):
+        with st.form("demo_login_" + role, border=False):
             email = st.text_input(
                 "Email", key="demo_email_" + role, autocomplete="username"
             )
@@ -168,8 +173,4 @@ def demo_login(role):
             st.write("Email · " + account_email)
             st.write("Password · " + account_password)
             st.caption("Local demonstration account")
-        other = "staff" if guest else "guest"
-        st.html(
-            f'<a class="other-entrance" href="?login={other}" target="_self">{other.title()} entrance ↗</a>'
-        )
     st.stop()

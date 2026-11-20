@@ -1,6 +1,7 @@
 """Guest service history and a quiet home-page progress card."""
 
 import streamlit as st
+from hotel.ui_copy import words
 from hotel.ui_client import request
 from hotel.post_call_ui import confirmation
 
@@ -92,7 +93,7 @@ def history(jump):
                     else ""
                 ),
                 "Room": r["room"] or "—",
-                "Problem": r["problem"],
+                "Problem": words(r["problem"]),
                 "Status": r["status"],
                 "Assigned staff": staff_label(r["assignment"])
                 if r["assignment"]
@@ -114,14 +115,14 @@ def history(jump):
         row_height=52,
         height=min(550, 56 + 52 * len(rows)),
         column_order=[
-            "Reference",
             "Room",
+            "Action",
             "Problem",
             "Status",
-            "Action",
             "Assigned staff",
             "Call duration",
             "Expected completion",
+            "Reference",
         ],
         column_config={
             "Action": st.column_config.ButtonColumn(
@@ -191,7 +192,7 @@ def home_progress(jump):
     t = opened[0]
     with st.container(border=True, key="home_progress"):
         st.caption("YOUR ACTIVE REQUEST")
-        st.subheader(t.get("problem") or "Reception follow-up")
+        st.subheader(t.get("problem") or "Reception follow up")
         a = t.get("assignment")
         st.write(
             f"Room {t['room']} · {a['name'] if a else 'Reception is coordinating your request'}"

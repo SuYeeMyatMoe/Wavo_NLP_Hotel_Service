@@ -95,7 +95,7 @@ def call_notes(evidence, open_ticket, staff_id, active_only=False):
                             )
                             st.rerun()
             if n["analysis"] != "{}":
-                if st.button("Inspect in NLP Studio", key="inspect_" + key):
+                if st.button("Open complaint analysis", key="inspect_" + key):
                     st.session_state.call_evidence = {
                         "room": n["room"],
                         "issue": n["issue"],

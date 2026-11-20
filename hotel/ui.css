@@ -12,7 +12,7 @@ h1,h2,h3,h4,h5,h6{font-family:var(--wavo-heading)!important;font-weight:400!impo
 .result{padding:20px 24px;border-radius:12px;background:#f1e9dc}.result small,.datum small{display:block;font-size:13px;color:var(--muted)}.result strong{display:block;font-size:25px;font-weight:600}.datum{padding:12px 0}.datum b{font-size:25px}
 .token{display:inline-block;padding:4px 9px;margin:3px 4px 3px 0;background:#eee4d5;border-radius:5px;font:13px ui-monospace,monospace;color:#594025}
 .stApp a:focus-visible,.stApp button:focus-visible{outline:3px solid #947146;outline-offset:3px}
-.st-key-nav{padding:10px 0}.st-key-nav button,.st-key-nav [role="radio"]{min-height:44px}
+.st-key-workspace_nav{padding:10px 0}.st-key-workspace_nav button,.st-key-workspace_nav [role="radio"]{min-height:44px}
 .st-key-home_progress{max-width:900px;margin:20px auto;background:var(--surface);padding:24px!important}
 .st-key-post_call_receipt{max-width:700px;margin:0 auto!important;padding:clamp(14px,2.2vw,26px)!important;border:1px solid var(--line)!important;border-radius:14px!important}
 .st-key-post_call_receipt h3:first-of-type{font:400 clamp(25px,3vw,34px)/1.15 var(--wavo-heading)!important;letter-spacing:-.02em}
