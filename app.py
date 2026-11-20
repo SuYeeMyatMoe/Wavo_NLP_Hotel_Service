@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parent
 st.set_page_config(
     page_title="Wavo | Hotel operations",
     layout="wide",
-    page_icon=str(ROOT / "static/wavo-w.png"),
+    page_icon=str(ROOT / "static/wavo-favicon.png"),
 )
 st.html(ROOT / "hotel/ui.css")
 st.html(ROOT / "hotel/hotel.css")

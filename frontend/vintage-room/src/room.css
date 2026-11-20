@@ -41,6 +41,7 @@
   letter-spacing: -.045em;
 }
 .room-brand img { width: 1em; height: 1em; flex: none; }
+.room-brand span { margin-inline-start: -.065em; }
 .room-navigation nav { display: flex; align-items: center; gap: clamp(6px, 2.6vw, 34px); }
 .room-navigation nav a {
   display: inline-flex;
@@ -246,14 +247,13 @@
   }
 }
 .phone-hint {
-  backdrop-filter: none;
-  background: #321e10f5;
-  box-shadow: 0 6px 18px #0002;
+  backdrop-filter: var(--glass-filter, blur(16px));
+  background: var(--glass-panel, #392d27a8);
+  border-color: var(--glass-line, #edcfaf43);
+  box-shadow: var(--glass-shadow, 0 6px 18px #0002);
 }
 .lamp-on .phone-hint {
-  background: var(--surface, #f6e6c9);
   color: var(--ink, #2c1b0f);
-  border-color: var(--line, #a47d53);
 }
 .lamp-on .hint-close { color: #623718; }
 .hint-close { transition: transform .2s ease, color .2s ease; }

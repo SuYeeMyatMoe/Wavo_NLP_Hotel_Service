@@ -34240,7 +34240,7 @@ function j2({
       children: [
         o && /* @__PURE__ */ pe.jsxs("header", { className: "room-navigation", children: [
           /* @__PURE__ */ pe.jsxs("a", { className: "room-brand", href: "./", "aria-label": "Wavo", children: [
-            /* @__PURE__ */ pe.jsx("img", { src: "app/static/wavo-w.png", alt: "" }),
+            /* @__PURE__ */ pe.jsx("img", { src: "app/static/wavo-icon.png", alt: "" }),
             /* @__PURE__ */ pe.jsx("span", { "aria-hidden": "true", children: "avo" })
           ] }),
           /* @__PURE__ */ pe.jsxs("nav", { "aria-label": "Hotel navigation", children: [

@@ -1,28 +1,87 @@
 const owner = Symbol.for("wavo.workspace.effects");
 const themeKey = "wavo.hotel.theme";
 
-function watchLanding(main) {
+const nativePanels = '[data-testid="stVerticalBlock"], [data-testid="stHorizontalBlock"]';
+const workspaceContent = '[data-testid="stMain"], [role="dialog"]';
+const revealTargets = [
+  "[data-wavo-reveal]", "[data-wavo-panel]", ".st-key-wavo_guest_concierge",
+  ".st-key-guest_live_reception", '[class*="st-key-concierge_"]',
+  ".hero", "[data-testid='stForm']", "[data-testid='stExpander']", "[data-testid='stMetric']",
+  "[data-testid='stDataFrame']", "[data-testid='stTable']", "[data-testid='stVegaLiteChart']",
+  "[data-testid='stButton']", "[data-testid='stFormSubmitButton']", "[data-testid='stLinkButton']",
+  "[data-testid='stDownloadButton']", "[data-testid='stButtonGroup']", "[data-testid='stPopover']",
+  "[data-testid='stTextInput']", "[data-testid='stTextArea']", "[data-testid='stSelectbox']",
+  "[data-testid='stNumberInput']", "[data-testid='stDateInput']", "[data-testid='stMultiSelect']",
+  ".receipt-details > div",
+].join(",");
+
+function watchWorkspace(main) {
   if (!main || !("IntersectionObserver" in window)) return () => {};
-  const selector = "[data-wavo-reveal]:not([data-wavo-revealed])";
-  const observed = new WeakSet();
+  const tracked = new Set();
+  const measured = new WeakSet();
   const viewport = new IntersectionObserver((entries) => {
-    for (const { target, isIntersecting } of entries) {
-      if (!isIntersecting || !target.isConnected) continue;
+    const entering = entries
+      .filter(({ target, isIntersecting, boundingClientRect }) =>
+        target.isConnected && isIntersecting && boundingClientRect.width > 0 && boundingClientRect.height > 0)
+      .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top ||
+        a.boundingClientRect.left - b.boundingClientRect.left);
+    const animated = [];
+    for (const { target } of entering) {
       viewport.unobserve(target);
-      target.style.setProperty("--wavo-reveal-delay", 85 * Number(target.dataset.wavoReveal) + "ms");
+      tracked.delete(target);
+      if (animated.some((parent) => parent.contains(target))) {
+        target.dataset.wavoSeen = "";
+        continue;
+      }
+      const order = target.dataset.wavoReveal ?? Math.min(animated.length, 4);
+      target.style.setProperty("--wavo-reveal-delay", 75 * Number(order) + "ms");
       target.dataset.wavoRevealed = "";
+      animated.push(target);
     }
-  }, { root: main, rootMargin: "0px 0px 32px 0px", threshold: .08 });
-  function observeNewContent() {
-    for (const element of main.querySelectorAll(selector)) {
-      if (observed.has(element)) continue;
-      observed.add(element);
-      viewport.observe(element);
+  }, { rootMargin: "0px 0px 20px 0px", threshold: [0, .05] });
+
+  function glass(element) {
+    if (measured.has(element)) return;
+    measured.add(element);
+    const style = getComputedStyle(element);
+    if (parseFloat(style.borderTopWidth) > 0 && style.borderTopStyle === "solid") {
+      element.dataset.wavoPanel = "";
     }
   }
-  const mutations = new MutationObserver(observeNewContent);
-  mutations.observe(main, { childList: true, subtree: true });
-  observeNewContent();
+
+  function observe(element) {
+    if (tracked.has(element) || element.hasAttribute("data-wavo-revealed") ||
+        element.hasAttribute("data-wavo-seen")) return;
+    tracked.add(element);
+    viewport.observe(element);
+  }
+
+  function scan(root) {
+    if (!(root instanceof HTMLElement)) return;
+    if (root.matches(nativePanels)) glass(root);
+    root.querySelectorAll(nativePanels).forEach(glass);
+    if (root.matches(revealTargets)) observe(root);
+    root.querySelectorAll(revealTargets).forEach(observe);
+  }
+
+  const mutations = new MutationObserver((records) => {
+    for (const { target, addedNodes, removedNodes } of records) {
+      for (const node of addedNodes) {
+        if (!(node instanceof HTMLElement)) continue;
+        if (node.closest(workspaceContent)) scan(node);
+        else if (node.childElementCount) node.querySelectorAll('[role="dialog"]').forEach(scan);
+      }
+      if (!removedNodes.length || !(target instanceof HTMLElement) || target.closest(".cursor-embers")) continue;
+      for (const element of tracked) {
+        if (element.isConnected) continue;
+        viewport.unobserve(element);
+        tracked.delete(element);
+      }
+    }
+  });
+  mutations.observe(document.body, { childList: true, subtree: true });
+  scan(main);
+  document.querySelectorAll('[role="dialog"]').forEach(scan);
   return () => {
     mutations.disconnect();
     viewport.disconnect();
@@ -37,7 +96,7 @@ export default function mount({ parentElement }) {
 
   const root = document.documentElement;
   const main = document.querySelector('[data-testid="stMain"]');
-  const stopReveals = watchLanding(main);
+  const stopReveals = watchWorkspace(main);
   const viewport = new ResizeObserver(updateWorkspaceWidth);
   function updateWorkspaceWidth() {
     if (main?.clientWidth) main.style.setProperty("--wavo-workspace-width", main.clientWidth + "px");

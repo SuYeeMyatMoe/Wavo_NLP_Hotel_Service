@@ -44,7 +44,7 @@ function VintageRoom({
       {entrance && (
         <header className="room-navigation">
           <a className="room-brand" href="./" aria-label="Wavo">
-            <img src="app/static/wavo-w.png" alt="" />
+            <img src="app/static/wavo-icon.png" alt="" />
             <span aria-hidden="true">avo</span>
           </a>
           <nav aria-label="Hotel navigation">

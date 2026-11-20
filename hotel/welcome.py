@@ -6,7 +6,7 @@ import hmac
 from hotel.demo_accounts import ACCOUNTS as DEMO_ACCOUNTS, GUESTS
 from hotel.vintage_ui import room
 
-WORDMARK = '<span class="wavo-lockup" aria-hidden="true"><img src="app/static/wavo-w.png" alt=""><span>avo</span></span>'
+WORDMARK = '<span class="wavo-lockup" aria-hidden="true"><img src="app/static/wavo-icon.png" alt=""><span>avo</span></span>'
 BRAND = f'<a class="hotel-mark" href="./" target="_self" aria-label="Wavo">{WORDMARK}</a>'
 
 

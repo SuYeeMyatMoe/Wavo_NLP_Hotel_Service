@@ -45,28 +45,33 @@
   width: 100%;
   max-width: 470px;
   padding: 7px;
-  border: 1px solid var(--line, #765339);
+  border: 1px solid var(--glass-line, #765339);
   border-radius: 28px;
-  background: var(--surface, #2b1b13);
+  background: var(--glass-panel, #2b1b13);
+  backdrop-filter: var(--glass-filter, blur(16px));
   box-sizing: border-box;
 }
 .call-controls button { flex: 1; }
 .microphone, .hangup, .play-reply, .send-turn {
   min-height: 44px;
   padding: 10px 20px;
-  border: 1px solid var(--line, #765339);
+  border: 1px solid var(--glass-line, #765339);
   border-radius: 8px;
-  background: var(--control, #422c1f);
+  background: var(--glass-control, #422c1f);
   color: inherit;
   font: 600 14px "Segoe UI", sans-serif;
   cursor: pointer;
   transition: transform .2s ease, box-shadow .2s ease;
+  backdrop-filter: var(--glass-control-filter, blur(9px));
 }
 .microphone:not([aria-pressed="true"]) {
-  background: var(--accent, #e0b476);
+  background: color-mix(in srgb, var(--accent, #e0b476) 88%, transparent);
   color: var(--accent-ink, #29170b);
 }
-.hangup { background: var(--danger-surface, #582b25); color: var(--danger-ink, #ffddd3); }
+.hangup {
+  background: color-mix(in srgb, var(--danger-surface, #582b25) 87%, transparent);
+  color: var(--danger-ink, #ffddd3);
+}
 .call-avatar button:disabled { cursor: wait; opacity: .65; }
 @media (hover: hover) {
   .call-avatar button:not(.mascot, :disabled):hover {
@@ -78,9 +83,10 @@
   max-width: 850px;
   margin: 28px auto;
   padding: 28px;
-  border: 1px solid var(--line, #765339);
+  border: 1px solid var(--glass-line, #765339);
   border-radius: 18px;
-  background: linear-gradient(135deg, var(--raised, #3e281b), var(--surface, #2b1b13));
+  background: var(--glass-panel, #2b1b13);
+  backdrop-filter: var(--glass-filter, blur(16px));
 }
 .live-transcript { max-width: 640px; margin: 1rem auto; font-size: .85rem; text-align: left; }
 .live-lines { max-height: 220px; overflow: auto; }

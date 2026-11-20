@@ -35,11 +35,12 @@ PEER = st.components.v2.component(
     css="""
     button {
         padding: .8rem 1.4rem;
-        border: 1px solid var(--line, #a47d53);
+        border: 1px solid var(--glass-line, #a47d53);
         border-radius: 8px;
-        background: var(--accent, #e0b476);
+        background: color-mix(in srgb, var(--accent, #e0b476) 88%, transparent);
         color: var(--accent-ink, #241409);
         cursor: pointer;
+        backdrop-filter: var(--glass-control-filter, blur(9px));
     }
     small { color: var(--muted, #c8ab8c); }
     """,
