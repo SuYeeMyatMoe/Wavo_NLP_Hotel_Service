@@ -8,6 +8,9 @@
 **/node_modules
 research/*
 !research/urgency.py
+!research/train.py
+!research/partition.csv
+!research/safety_reviews.csv
 frontend
 artifacts/distilbert
 .streamlit/secrets.toml

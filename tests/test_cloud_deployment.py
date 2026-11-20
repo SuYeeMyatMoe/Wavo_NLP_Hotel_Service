@@ -147,7 +147,7 @@ def test_provider_retries_only_transient_errors(gemini, monkeypatch, code, expec
     assert len(calls) == expected
     assert sleeps == ([1, 2] if expected == 3 else [])
     assert [c["config"].http_options.timeout for c in calls] == (
-        [25000, 24000, 22000] if expected == 3 else [25000]
+        [12000, 12000, 12000] if expected == 3 else [12000]
     )
 
 
@@ -227,6 +227,32 @@ def test_rejects_unapproved_fallback_model(gemini, monkeypatch):
     monkeypatch.setattr(cloud, "client", lambda _: SimpleNamespace())
     with pytest.raises(cloud.LanguageUnavailable):
         cloud.translate("空调坏了", "zh", "en")
+
+
+def test_slow_primary_reserves_time_for_fallback(gemini, monkeypatch):
+    import httpx
+
+    now, calls = [0.0], []
+
+    def generate(**kwargs):
+        calls.append((kwargs["model"], kwargs["config"].http_options.timeout))
+        if len(calls) == 1:
+            now[0] += kwargs["config"].http_options.timeout / 1000
+            raise httpx.ReadTimeout("slow primary")
+        now[0] += 5
+        return SimpleNamespace(text='{"text":"The AC is broken."}')
+
+    monkeypatch.setenv("GEMINI_LANGUAGE_FALLBACK_MODEL", "gemini-3.5-flash-lite")
+    monkeypatch.setattr(
+        cloud, "client",
+        lambda _: SimpleNamespace(models=SimpleNamespace(generate_content=generate)),
+    )
+    monkeypatch.setattr(cloud.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(cloud.time, "sleep", lambda n: now.__setitem__(0, now[0] + n))
+    monkeypatch.setattr(cloud.random, "uniform", lambda *args: 0)
+    assert cloud.translate("အဲကွန်းပျက်နေပါတယ်။", "my", "en") == "The AC is broken."
+    assert calls == [("gemini-3.1-flash-lite", 12000), ("gemini-3.5-flash-lite", 12000)]
+    assert now[0] < cloud.REQUEST_SECONDS
 
 
 def test_readiness_only_retries_get(monkeypatch):

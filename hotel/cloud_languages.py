@@ -20,6 +20,7 @@ UNAVAILABLE = "Language processing is unavailable. Please retry or send a typed 
 TRANSIENT_STATUS = {500, 502, 503, 504}
 REQUEST_SECONDS = 25
 MAX_ATTEMPTS = 3
+PRIMARY_ATTEMPT_SECONDS = 12
 
 
 class LanguageUnavailable(RuntimeError):
@@ -58,11 +59,16 @@ def generate(instruction, contents, schema):
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise TimeoutError("Language deadline reached")
+            use_fallback = fallback and (
+                attempt == MAX_ATTEMPTS - 1
+                or (attempt > 0 and remaining <= REQUEST_SECONDS / 2)
+            )
+            attempt_seconds = (
+                remaining if use_fallback else min(remaining, PRIMARY_ATTEMPT_SECONDS)
+            )
             try:
                 response = provider.models.generate_content(
-                    model=fallback
-                    if fallback and attempt == MAX_ATTEMPTS - 1
-                    else model,
+                    model=fallback if use_fallback else model,
                     contents=contents,
                     config=types.GenerateContentConfig(
                         system_instruction=instruction,
@@ -72,7 +78,8 @@ def generate(instruction, contents, schema):
                         response_mime_type="application/json",
                         response_json_schema=schema,
                         http_options=types.HttpOptions(
-                            timeout=max(1, int(remaining * 1000))
+                            # Reserve time for recovery when a primary request stalls.
+                            timeout=max(1, int(attempt_seconds * 1000))
                         ),
                     ),
                 )

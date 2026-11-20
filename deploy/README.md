@@ -69,8 +69,10 @@ does not retain conversation audio or transcripts.
   or work confirmation. Messages that cannot be assessed go to reception review.
 - Language operations use the model's default sampling settings, at most three
   attempts, exponential backoff with jitter, and a 25-second total deadline.
+  Primary attempts have a 12-second cap to reserve recovery time.
   `GEMINI_LANGUAGE_FALLBACK_MODEL=gemini-3.5-flash-lite` enables the final attempt
-  on another free-tier model after transient service/network failures. Quota,
+  (or the next attempt when less than half the deadline remains) on another
+  free-tier model after transient service/network failures. Quota,
   authentication, invalid-input and malformed-response failures do not trigger
   fallback. Both models use the existing free Gemini project, with no paid tier
   or billing upgrade. Provider capacity failures can still require reception review.
