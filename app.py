@@ -31,13 +31,14 @@ from hotel import welcome
 load_dotenv(ROOT / ".env")
 S = st.session_state
 from hotel.readiness import enabled as wake_enabled, begin_wake, wait_for_ready
+from hotel.ui_readiness import browser_hint
 
 api_url = os.getenv("HOTEL_API_URL", "").rstrip("/")
 if (
     os.getenv("HOTEL_MODE") == "connected" and wake_enabled() and api_url
     and "auth" not in S and S.get("_entry_wake_url") != api_url
 ):
-    begin_wake(api_url)
+    browser_hint(api_url, begin_wake(api_url))
     S._entry_wake_url = api_url
 service_hint = st.query_params.get("service")
 if service_hint in {"comfort", "housekeeping", "wifi", "special"}:
@@ -99,6 +100,8 @@ def sign_in():
                 S.login_timings = {}
                 try:
                     wake = begin_wake(api_url) if wake_enabled() else None
+                    if wake is not None:
+                        browser_hint(api_url, wake)
                     r = http_request(
                         "POST",
                         os.environ["SUPABASE_URL"].rstrip("/") + "/auth/v1/token",

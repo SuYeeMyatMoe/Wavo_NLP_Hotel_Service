@@ -69,6 +69,27 @@ def test_wake_is_shared_and_reused_only_for_sixty_seconds(monkeypatch):
     assert len(calls) == 2
 
 
+def test_only_one_visitor_gets_browser_hint_within_shared_deadline(monkeypatch):
+    release = Event()
+    now = [0.0]
+    monkeypatch.setattr(readiness, "wait_for_api", lambda _: release.wait(5))
+    coordinator = readiness.WakeCoordinator(clock=lambda: now[0])
+    task = coordinator.begin("https://api.test")
+    now[0] = 30
+    try:
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            hints = list(pool.map(lambda _: coordinator.claim_browser_hint("https://api.test/", task), range(8)))
+        sent = [hint for hint in hints if hint]
+        assert len(sent) == 1
+        assert sent[0]["url"] == "https://api.test/healthz"
+        assert sent[0]["timeoutMs"] == 90000
+        assert set(sent[0]) == {"url", "nonce", "timeoutMs"}
+    finally:
+        release.set()
+    task.result(timeout=5)
+    assert coordinator.claim_browser_hint("https://api.test", task) is None
+
+
 def test_failed_wake_retries_only_when_requested(monkeypatch):
     calls = []
 
@@ -84,6 +105,22 @@ def test_failed_wake_retries_only_when_requested(monkeypatch):
     assert len(calls) == 1
     coordinator.begin("https://api.test").result(timeout=5)
     assert len(calls) == 2
+
+
+def test_browser_hint_mounts_without_changing_login_state(monkeypatch):
+    from streamlit.testing.v1 import AppTest
+    from hotel import ui_readiness
+
+    monkeypatch.setattr(ui_readiness, "claim_browser_hint", lambda *a: {
+        "url": "https://api.test/healthz", "nonce": "public", "timeoutMs": 120000,
+    })
+    ui = AppTest.from_string(
+        "from hotel.ui_readiness import browser_hint\n"
+        "browser_hint('https://api.test', None)\n",
+        default_timeout=15,
+    ).run()
+    assert not ui.exception
+    assert "auth" not in ui.session_state
 
 
 def test_wait_for_ready_joins_existing_wake(monkeypatch):

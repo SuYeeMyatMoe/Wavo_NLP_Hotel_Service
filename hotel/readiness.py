@@ -7,6 +7,7 @@ import requests
 from concurrent.futures import Future, TimeoutError as FutureTimeout
 from dataclasses import dataclass
 from threading import Lock, Thread
+from uuid import uuid4
 from hotel.http_client import request
 
 
@@ -51,6 +52,8 @@ def enabled():
 class Wake:
     future: Future
     ready_at: float = 0.0
+    browser_claimed: bool = False
+    started_at: float = 0.0
 
 
 class WakeCoordinator:
@@ -78,7 +81,7 @@ class WakeCoordinator:
                 key: value for key, value in self.tasks.items()
                 if not value.future.done() or self.clock() - value.ready_at < 60
             }
-            task = Wake(Future())
+            task = Wake(Future(), started_at=self.clock())
             self.tasks[url] = task
             Thread(target=self._run, args=(url, task), name="wavo-api-wake", daemon=True).start()
             return task.future
@@ -92,12 +95,30 @@ class WakeCoordinator:
             task.ready_at = self.clock()
             task.future.set_result(None)
 
+    def claim_browser_hint(self, url, future):
+        with self.lock:
+            task = self.tasks.get(url.rstrip("/"))
+            if not task or task.future is not future or future.done() or task.browser_claimed:
+                return None
+            remaining = 120 - (self.clock() - task.started_at)
+            if remaining <= 0:
+                return None
+            task.browser_claimed = True
+            return {
+                "url": url.rstrip("/") + "/healthz", "nonce": uuid4().hex,
+                "timeoutMs": int(remaining * 1000),
+            }
+
 
 _coordinator = WakeCoordinator()
 
 
 def begin_wake(url):
     return _coordinator.begin(url)
+
+
+def claim_browser_hint(url, task):
+    return _coordinator.claim_browser_hint(url, task)
 
 
 def wait_for_ready(url, *, task=None):

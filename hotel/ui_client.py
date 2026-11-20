@@ -63,11 +63,14 @@ def request(method, path, *, optional=False, **kwargs):
     try:
         if url:
             if method == "POST" and path in {"/calls", "/calls/start", "/work-assistant/sessions"}:
-                from hotel.readiness import enabled, wait_for_ready
+                from hotel.readiness import enabled, begin_wake, wait_for_ready
+                from hotel.ui_readiness import browser_hint
 
                 if enabled():
+                    task = begin_wake(url)
+                    browser_hint(url, task)
                     with st.spinner("Connecting to the hotel service…"):
-                        wait_for_ready(url)
+                        wait_for_ready(url, task=task)
             r = http_request(
                 method,
                 url + path,
