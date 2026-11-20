@@ -20,6 +20,9 @@ from hotel.voice_api import register as register_voice_tools
 from hotel.concierge_api import register
 from hotel.intelligence_api import register as register_intelligence
 from hotel.completion import register as register_completion
+from hotel.call_start import register as register_call_start
+from hotel.guest_activity import register as register_guest_activity
+from hotel.cloud_languages import LanguageUnavailable
 from hotel.nlp import ROOT
 from hotel.demo_accounts import PREVIEW_ACTORS
 from hotel.languages import Language, InputLanguage, guest_analysis, wav_bytes
@@ -31,30 +34,25 @@ private_logs()
 
 @asynccontextmanager
 async def lifespan(app):
-    from hotel.nlp import bundle, lexicon
-
-    bundle()
-    lexicon()
-    from hotel.intelligence import vader
-    from hotel.languages import text_detector, language_provider
+    from hotel.languages import language_provider
+    from hotel.startup import WarmupRunner
 
     language_provider()
-    vader()
-    text_detector()
-    if s.voice_ready():
-        # Import protobuf/token dependencies before the first guest clicks Call.
-        from livekit import api  # noqa: F401
+    warmup = WarmupRunner()
+    warmup.start()
     runner = None
-    if os.getenv("WAVO_RUN_OPERATIONS", "false").lower() == "true":
-        from hotel.operations_worker import OperationsRunner
-
-        runner = OperationsRunner()
-        runner.start()
     try:
+        if os.getenv("WAVO_RUN_OPERATIONS", "false").lower() == "true":
+            from hotel.operations_worker import OperationsRunner
+
+            runner = OperationsRunner()
+            runner.start()
         yield
     finally:
-        if runner:
-            await asyncio.to_thread(runner.close)
+        await asyncio.gather(
+            asyncio.to_thread(warmup.close),
+            *([asyncio.to_thread(runner.close)] if runner else []),
+        )
 
 
 app = FastAPI(title="Wavo hotel operations", lifespan=lifespan)
@@ -63,9 +61,6 @@ app = FastAPI(title="Wavo hotel operations", lifespan=lifespan)
 @app.get("/healthz", include_in_schema=False)
 def health():
     return {"status": "ok"}
-
-
-from hotel.cloud_languages import LanguageUnavailable
 
 
 @app.exception_handler(LanguageUnavailable)
@@ -643,10 +638,6 @@ register_completion(app, identity)
 
 register_voice_tools(app, identity)
 
-from hotel.call_start import register as register_call_start
-
 register_call_start(app, identity, call_credentials)
-
-from hotel.guest_activity import register as register_guest_activity
 
 register_guest_activity(app, context)

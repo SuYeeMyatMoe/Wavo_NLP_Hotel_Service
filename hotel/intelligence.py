@@ -1,8 +1,8 @@
 """Evidence-based conversation features. These rules are not trained classifiers."""
 
 import re
-from functools import lru_cache
 from pathlib import Path
+from hotel.resources import singleton
 
 ROOT = Path(__file__).resolve().parents[1]
 FRUSTRATION = re.compile(
@@ -52,7 +52,7 @@ def hazard_active(text, match):
     return True
 
 
-@lru_cache(maxsize=1)
+@singleton
 def vader():
     import nltk
     from nltk.sentiment import SentimentIntensityAnalyzer

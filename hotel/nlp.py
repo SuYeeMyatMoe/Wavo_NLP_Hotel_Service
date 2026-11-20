@@ -4,11 +4,8 @@ import html
 import json
 import re
 import unicodedata
-from functools import lru_cache
 from pathlib import Path
-
-import joblib
-import numpy as np
+from hotel.resources import singleton
 
 ROOT = Path(__file__).resolve().parents[1]
 MODEL = ROOT / "artifacts" / "model.joblib"
@@ -43,7 +40,7 @@ def clean(text):
     return " ".join(re.sub(r"[^a-z0-9]+", " ", value).split())
 
 
-@lru_cache(maxsize=1)
+@singleton
 def lexicon():
     return json.loads((ROOT / "artifacts" / "lemmas.json").read_text(encoding="utf8"))
 
@@ -59,12 +56,16 @@ def normalize(text):
     return " ".join(steps(text)["lemmas"])
 
 
-@lru_cache(maxsize=1)
+@singleton
 def bundle():
+    import joblib
+
     return joblib.load(MODEL)
 
 
 def evidence(pipe, text):
+    import numpy as np
+
     vec, model = pipe.named_steps["tfidf"], pipe.named_steps["model"]
     x = vec.transform([text])
     names = vec.get_feature_names_out()

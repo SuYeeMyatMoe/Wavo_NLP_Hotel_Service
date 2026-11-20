@@ -11,6 +11,7 @@ from functools import lru_cache
 from typing import Any, Literal
 
 from hotel.language_models import BASE
+from hotel.resources import singleton
 
 Language = Literal["en", "zh", "hi", "ms", "my"]
 InputLanguage = Literal["auto", "en", "zh", "hi", "ms", "my"]
@@ -38,7 +39,7 @@ def language_provider():
     return provider
 
 
-@lru_cache(maxsize=1)
+@singleton
 def text_detector():
     from langid.langid import LanguageIdentifier, model
 

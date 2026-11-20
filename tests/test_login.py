@@ -1,22 +1,28 @@
 from types import SimpleNamespace
+from concurrent.futures import Future
 
 import pytest
 import requests
 from streamlit.testing.v1 import AppTest
 from hotel import http_client, ui_client
+from hotel import readiness
 
 
 @pytest.mark.parametrize(
     "role,history_failure", [("guest", False), ("staff", False), ("guest", True)]
 )
+@pytest.mark.parametrize("wake_enabled", [False, True])
 def test_hosted_login_reuses_verified_workspace_data(
-    monkeypatch, role, history_failure
+    monkeypatch, role, history_failure, wake_enabled
 ):
     monkeypatch.setenv("HOTEL_MODE", "connected")
     monkeypatch.setenv("HOTEL_API_URL", "http://hotel.test")
     monkeypatch.setenv("SUPABASE_URL", "https://auth.test")
     monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
     monkeypatch.setenv("WAVO_DEMO_LOGIN", "false")
+    monkeypatch.setenv("WAVO_WAKE_API", str(wake_enabled).lower())
+    wake = Future()
+    monkeypatch.setattr(readiness, "begin_wake", lambda _: wake)
     profile = dict(
         id="test-user",
         hotel="test",
@@ -42,6 +48,9 @@ def test_hosted_login_reuses_verified_workspace_data(
         return SimpleNamespace(ok=True, status_code=200, json=lambda: value)
 
     def post(url, **kwargs):
+        # Authentication happens before waiting on the API wake task.
+        assert not wake.done()
+        wake.set_result(None)
         calls.append(("POST", url))
         assert kwargs["json"] == {"email": "user@test", "password": "password"}
         return response({"access_token": "test-token"})
@@ -85,6 +94,7 @@ def test_hosted_login_reuses_verified_workspace_data(
     assert not any('class="wavo-loading"' in e.value for e in ui.get("html"))
     assert set(ui.session_state.login_timings) == {
         "authentication_seconds",
+        "readiness_seconds",
         "workspace_seconds",
         "usable_workspace_seconds",
     }
@@ -152,3 +162,31 @@ def test_login_failures_clear_loader_and_allow_retry(monkeypatch, failure):
     assert not any('class="wavo-loading"' in e.value for e in ui.get("html"))
     assert ui.text_input(key="demo_email_guest").value == "guest@test"
     assert any(b.label == "Sign in" for b in ui.button)
+
+
+def test_website_entry_wakes_without_blocking_and_bad_credentials_do_not_wait(monkeypatch):
+    monkeypatch.setenv("HOTEL_MODE", "connected")
+    monkeypatch.setenv("HOTEL_API_URL", "http://hotel.test")
+    monkeypatch.setenv("SUPABASE_URL", "https://auth.test")
+    monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+    monkeypatch.setenv("WAVO_WAKE_API", "true")
+    monkeypatch.setenv("WAVO_DEMO_LOGIN", "false")
+    wake, calls = Future(), []
+    def begin(url):
+        calls.append(url)
+        return wake
+    monkeypatch.setattr(readiness, "begin_wake", begin)
+    monkeypatch.setattr(http_client, "request", lambda *a, **kw: SimpleNamespace(ok=False))
+    monkeypatch.setattr(readiness, "wait_for_ready", lambda *a, **kw: pytest.fail("Bad credentials must not wait"))
+    ui = AppTest.from_file("../app.py", default_timeout=15)
+    ui.run()
+    assert not ui.exception and calls == ["http://hotel.test"]
+    ui.run()
+    assert len(calls) == 1
+    ui.query_params["login"] = "guest"
+    ui.run()
+    assert len(calls) == 1 and not wake.done()
+    next(b for b in ui.button if b.label == "Sign in").click().run()
+    assert not ui.exception and "auth" not in ui.session_state
+    assert ui.error and not wake.done()
+    assert not any('class="wavo-loading"' in e.value for e in ui.get("html"))

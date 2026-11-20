@@ -24,12 +24,21 @@ from hotel.vintage_ui import guest_concierge, room as vintage_room, workspace_ef
 
 workspace_effects()
 loading_slot = st.empty()
-LOADING_MARKUP = '<div class="wavo-loading" role="status" aria-live="polite"><div class="wavo-loading-card"><span class="wavo-loading-bell" aria-hidden="true"></span><span>Wavo is getting things ready…</span></div></div>'
+LOADING_MARKUP = '<div class="wavo-loading" role="status" aria-live="polite"><div class="wavo-loading-card"><span class="wavo-loading-bell" aria-hidden="true"></span><span>{message}</span></div></div>'
 from dotenv import load_dotenv
 from hotel import welcome
 
 load_dotenv(ROOT / ".env")
 S = st.session_state
+from hotel.readiness import enabled as wake_enabled, begin_wake, wait_for_ready
+
+api_url = os.getenv("HOTEL_API_URL", "").rstrip("/")
+if (
+    os.getenv("HOTEL_MODE") == "connected" and wake_enabled() and api_url
+    and "auth" not in S and S.get("_entry_wake_url") != api_url
+):
+    begin_wake(api_url)
+    S._entry_wake_url = api_url
 service_hint = st.query_params.get("service")
 if service_hint in {"comfort", "housekeeping", "wifi", "special"}:
     S.pending_service = service_hint
@@ -85,15 +94,11 @@ def sign_in():
                 autocomplete="current-password",
             )
             if st.form_submit_button("Sign in", type="primary", width="stretch"):
-                loading_slot.html(LOADING_MARKUP)
+                loading_slot.html(LOADING_MARKUP.format(message="Signing in…"))
                 started = perf_counter()
                 S.login_timings = {}
                 try:
-                    from hotel.readiness import enabled, wait_for_api
-
-                    if enabled():
-                        with st.spinner("Starting the hotel service… This can take a minute."):
-                            wait_for_api(os.environ["HOTEL_API_URL"])
+                    wake = begin_wake(api_url) if wake_enabled() else None
                     r = http_request(
                         "POST",
                         os.environ["SUPABASE_URL"].rstrip("/") + "/auth/v1/token",
@@ -105,6 +110,13 @@ def sign_in():
                     S.login_timings["authentication_seconds"] = perf_counter() - started
                     if r.ok:
                         session = r.json()
+                        readiness_started = perf_counter()
+                        if wake is not None:
+                            if not wake.done():
+                                loading_slot.html(LOADING_MARKUP.format(message="Starting the hotel service…"))
+                            wait_for_ready(api_url, task=wake)
+                        S.login_timings["readiness_seconds"] = perf_counter() - readiness_started
+                        loading_slot.html(LOADING_MARKUP.format(message="Opening your workspace…"))
                         profile_started = perf_counter()
                         profile = http_request(
                             "GET",

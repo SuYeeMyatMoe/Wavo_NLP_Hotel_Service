@@ -63,11 +63,11 @@ def request(method, path, *, optional=False, **kwargs):
     try:
         if url:
             if method == "POST" and path in {"/calls", "/calls/start", "/work-assistant/sessions"}:
-                from hotel.readiness import enabled, wait_for_api
+                from hotel.readiness import enabled, wait_for_ready
 
                 if enabled():
                     with st.spinner("Connecting to the hotel service…"):
-                        wait_for_api(url)
+                        wait_for_ready(url)
             r = http_request(
                 method,
                 url + path,
