@@ -1,0 +1,17 @@
+scikit-learn==1.9.0
+joblib==1.5.3
+numpy==2.2.5
+pandas==3.0.5
+fastapi==0.115.12
+uvicorn==0.34.2
+httpx==0.28.1
+requests==2.32.5
+python-dotenv==1.1.0
+psycopg[binary]==3.3.6
+psycopg-pool==3.3.3
+fpdf2==2.8.8
+livekit-api==1.2.3
+espeakng-loader==0.2.4
+langid==1.1.6
+nltk==3.10.4
+google-genai==3.4.0

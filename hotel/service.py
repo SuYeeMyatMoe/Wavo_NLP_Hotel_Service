@@ -2,6 +2,7 @@ import json
 import base64
 import hashlib
 import os
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from typing import Literal
@@ -35,17 +36,43 @@ async def lifespan(app):
     bundle()
     lexicon()
     from hotel.intelligence import vader
-    from hotel.languages import text_detector
+    from hotel.languages import text_detector, language_provider
 
+    language_provider()
     vader()
     text_detector()
     if s.voice_ready():
         # Import protobuf/token dependencies before the first guest clicks Call.
         from livekit import api  # noqa: F401
-    yield
+    runner = None
+    if os.getenv("WAVO_RUN_OPERATIONS", "false").lower() == "true":
+        from hotel.operations_worker import OperationsRunner
+
+        runner = OperationsRunner()
+        runner.start()
+    try:
+        yield
+    finally:
+        if runner:
+            await asyncio.to_thread(runner.close)
 
 
 app = FastAPI(title="Wavo hotel operations", lifespan=lifespan)
+
+
+@app.get("/healthz", include_in_schema=False)
+def health():
+    return {"status": "ok"}
+
+
+from hotel.cloud_languages import LanguageUnavailable
+
+
+@app.exception_handler(LanguageUnavailable)
+async def language_unavailable(_, exc):
+    return JSONResponse({"detail": str(exc)}, status_code=503)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[

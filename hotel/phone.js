@@ -46,6 +46,16 @@ export default function ({parentElement,data,setStateValue}) {
    const response=await fetch(s.data.api+path,{method,headers:{Authorization:'Bearer '+s.data.accessToken,'Content-Type':'application/json'},...(body!==undefined?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(15000),keepalive});
    if(!response.ok){const error=new Error('API_'+response.status);error.code='API_'+response.status;throw error;}return response.json();
  }
+ async function ready(valid){
+   const until=performance.now()+120000;
+   while(valid()&&performance.now()<until){
+     try{const response=await fetch(s.data.api+'/healthz',{signal:AbortSignal.timeout(Math.min(5000,Math.max(1,until-performance.now())))});if(response.ok&&(await response.json()).status==='ok')return;}
+     catch{}
+     if(valid())help.textContent='Starting the hotel service. This can take a minute…';
+     await new Promise(resolve=>setTimeout(resolve,2000));
+   }
+   if(valid())throw Object.assign(new Error(),{code:'API_STARTING'});
+ }
  function stopMedia(){
    ++s.generation;s.timers.forEach(clearTimeout);s.timers=[];clearInterval(s.meterTimer);
    // Stop actual devices synchronously, before any network work or rerender.
@@ -117,6 +127,7 @@ export default function ({parentElement,data,setStateValue}) {
      const stream=await mic;if(!valid()){stream.getTracks().forEach(t=>t.stop());return;}
      s.stream=stream;mark('microphone_ready_ms');let config=s.data;
      if(s.data.api){
+       await ready(valid);if(!valid())return;
        s.startKey=crypto.randomUUID();const payload={key:s.startKey,transcript_consent:consent.checked};
        // A timeout may follow a commit: repeat with the same key only.
        try{config=await api('/calls/start',payload);}catch(e){if(!valid())return;if(e.code&&e.code!=='API_503')throw e;config=await api('/calls/start',payload);}
@@ -149,8 +160,8 @@ export default function ({parentElement,data,setStateValue}) {
        analyser.getByteTimeDomainData(samples);const level=s.muted?0:Math.min(1,Math.sqrt(samples.reduce((n,v)=>n+(v-128)**2,0)/samples.length)/32);meter.value=level;box.style.setProperty('--voice-level',String(level));
        if(s.remoteAnalyser){s.remoteAnalyser.getByteTimeDomainData(samples);if(samples.some(v=>Math.abs(v-128)>3)){mark('first_signal_ms');if(s.awaitingReplySignal&&!s.localSpeaking){s.metrics.last_audible_reply_ms=Math.round(performance.now()-s.speechEndedAt);s.awaitingReplySignal=false;}s.render();}}
      },100);
-     later(()=>{if(valid()&&!s.audio.length)help.textContent='Wavo has not joined yet. End this call and retry, or send a message below.';},10000);
-     later(()=>{if(valid()&&!s.audio.length){void finish();help.textContent='AI reception is unavailable right now. Please retry or send a message.';}},30000);
+     later(()=>{if(valid()&&!s.audio.length)help.textContent='Wavo is starting. Please stay on the call…';},10000);
+     later(()=>{if(valid()&&!s.audio.length){void finish();help.textContent='AI reception is unavailable right now. Please retry or send a message.';}},60000);
      later(()=>poll(g),5000);
    }catch(error){
      if(!valid())return;let code=error.code||error.name;

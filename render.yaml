@@ -1,0 +1,77 @@
+services:
+  - type: web
+    name: wavo-api
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r deploy/requirements-api.txt
+    startCommand: python -m uvicorn hotel.service:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /healthz
+    autoDeployTrigger: off
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: HOTEL_MODE
+        value: connected
+      - key: WAVO_LANGUAGE_PROVIDER
+        value: gemini
+      - key: WAVO_RUN_OPERATIONS
+        value: "true"
+      - key: WAVO_DB_POOL_MAX
+        value: "4"
+      - key: OPENBLAS_NUM_THREADS
+        value: "1"
+      - key: OMP_NUM_THREADS
+        value: "1"
+      - key: CONCIERGE_MODE
+        value: auto
+      - key: WORK_ASSISTANT_MODE
+        value: live
+      - key: GEMINI_LANGUAGE_MODEL
+        value: gemini-3.1-flash-lite
+      - key: GEMINI_LIVE_MODEL
+        value: gemini-3.1-flash-live-preview
+      - key: WAVO_BROWSER_ORIGINS
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: LIVEKIT_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+  - type: web
+    name: wavo-web
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r deploy/requirements-web.txt
+    startCommand: python -m streamlit run app.py --server.address 0.0.0.0 --server.port $PORT
+    healthCheckPath: /_stcore/health
+    autoDeployTrigger: off
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: HOTEL_MODE
+        value: connected
+      - key: WAVO_DEMO_LOGIN
+        value: "true"
+      - key: WAVO_WAKE_API
+        value: "true"
+      - key: HOTEL_API_URL
+        sync: false
+      - key: WAVO_BROWSER_API_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false

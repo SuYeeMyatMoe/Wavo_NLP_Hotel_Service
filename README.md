@@ -1,5 +1,7 @@
 # Wavo hotel operations
 
+For the free Render + Supabase + LiveKit Cloud deployment, see [the hosted demo runbook](deploy/README.md).
+
 Wavo combines a Streamlit guest concierge, an explainable NLP Studio and automatic staff coordination and a conversational work assistant. Google Colab owns training, model comparisons and research charts. The deployed analysis engine contains the selected urgency and department classifiers, deterministic context rules and NLTK VADER sentiment.
 
 ## Run locally

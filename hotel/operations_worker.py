@@ -2,8 +2,45 @@
 
 import argparse
 import time
+import logging
+from threading import Event, Thread
 from hotel.monitoring import tick
 from hotel.notifications import publish_one
+
+
+def cycle(stop=None):
+    tick()
+    for _ in range(100):
+        if stop is not None and stop.is_set():
+            break
+        if not publish_one():
+            break
+
+
+class OperationsRunner:
+    """One stoppable loop owned by the single API process's lifespan."""
+
+    def __init__(self, interval=15):
+        self.interval = interval
+        self.stop = Event()
+        self.thread = Thread(target=self.run, name="wavo-operations", daemon=True)
+
+    def run(self):
+        while not self.stop.is_set():
+            try:
+                cycle(self.stop)
+            except Exception:
+                logging.getLogger(__name__).warning(
+                    "Operations cycle unavailable; retrying."
+                )
+            self.stop.wait(self.interval)
+
+    def start(self):
+        self.thread.start()
+
+    def close(self):
+        self.stop.set()
+        self.thread.join()
 
 
 def main():
@@ -12,10 +49,7 @@ def main():
     args = parser.parse_args()
     while True:
         try:
-            tick()
-            for _ in range(100):
-                if not publish_one():
-                    break
+            cycle()
         except Exception:
             if args.once:
                 raise

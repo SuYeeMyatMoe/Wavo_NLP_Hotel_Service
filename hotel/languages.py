@@ -5,6 +5,7 @@ import hashlib
 import io
 import wave
 import re
+import os
 from threading import Lock, Thread
 from functools import lru_cache
 from typing import Any, Literal
@@ -28,6 +29,13 @@ NLLB = {
     "my": "mya_Mymr",
 }
 MAX_BYTES = 2_000_000
+
+
+def language_provider():
+    provider = os.getenv("WAVO_LANGUAGE_PROVIDER", "local")
+    if provider not in {"local", "gemini"}:
+        raise RuntimeError("Set WAVO_LANGUAGE_PROVIDER to local or gemini.")
+    return provider
 
 
 @lru_cache(maxsize=1)
@@ -60,6 +68,10 @@ def detect_text_language(text, previous="en"):
 
 
 def transcribe_auto(raw, previous="en"):
+    if language_provider() == "gemini":
+        from hotel.cloud_languages import transcribe as cloud_transcribe
+
+        return cloud_transcribe(raw, previous=previous)
     segments, info = recognizer().transcribe(
         io.BytesIO(raw),
         language=None,
@@ -105,6 +117,10 @@ def to_english(text, language):
 def translate(text, language, target):
     if language == target:
         return text
+    if language_provider() == "gemini":
+        from hotel.cloud_languages import translate as cloud_translate
+
+        return cloud_translate(text, language, target)
     tr, sp = translator()
     pieces = sp.encode(text, out_type=str)
     batches = [
@@ -147,6 +163,9 @@ def recognizer():
 def warm_staff_recorder():
     global _warmup_thread
 
+    if language_provider() == "gemini":
+        return
+
     def load():
         try:
             recognizer()
@@ -182,6 +201,10 @@ def wav_bytes(payload):
 
 
 def transcribe(raw, language):
+    if language_provider() == "gemini":
+        from hotel.cloud_languages import transcribe as cloud_transcribe
+
+        return cloud_transcribe(raw, language=language)[0]
     segments, _ = recognizer().transcribe(
         io.BytesIO(raw),
         language=language,

@@ -89,6 +89,11 @@ def sign_in():
                 started = perf_counter()
                 S.login_timings = {}
                 try:
+                    from hotel.readiness import enabled, wait_for_api
+
+                    if enabled():
+                        with st.spinner("Starting the hotel service… This can take a minute."):
+                            wait_for_api(os.environ["HOTEL_API_URL"])
                     r = http_request(
                         "POST",
                         os.environ["SUPABASE_URL"].rstrip("/") + "/auth/v1/token",

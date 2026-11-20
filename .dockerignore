@@ -1,0 +1,12 @@
+*
+!Dockerfile
+!deploy/
+!deploy/requirements-agent.txt
+!hotel/
+!hotel/__init__.py
+!hotel/voice_worker.py
+!hotel/voice_turns.py
+!hotel/voice_input.py
+!hotel/voice_health.py
+!hotel/worker_auth.py
+!hotel/privacy_logging.py

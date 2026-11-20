@@ -62,6 +62,12 @@ def request(method, path, *, optional=False, **kwargs):
         headers["Authorization"] = "Bearer " + st.session_state.auth["access_token"]
     try:
         if url:
+            if method == "POST" and path in {"/calls", "/calls/start", "/work-assistant/sessions"}:
+                from hotel.readiness import enabled, wait_for_api
+
+                if enabled():
+                    with st.spinner("Connecting to the hotel service…"):
+                        wait_for_api(url)
             r = http_request(
                 method,
                 url + path,
