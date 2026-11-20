@@ -5,6 +5,8 @@ from contextlib import contextmanager, nullcontext
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
+from time import perf_counter
+from hotel.latency import database_elapsed, database_batch
 
 from dotenv import load_dotenv
 
@@ -33,11 +35,16 @@ def connected():
 class DB:
     def __init__(self, connection, pg):
         self.connection, self.pg = connection, pg
+        self._batch_active = False
 
     def run(self, query, args=()):
-        return self.connection.execute(
-            query.replace("?", "%s") if self.pg else query, args
-        )
+        started = perf_counter()
+        try:
+            return self.connection.execute(
+                query.replace("?", "%s") if self.pg else query, args
+            )
+        finally:
+            database_elapsed(started)
 
     def one(self, query, args=()):
         row = self.run(query, args).fetchone()
@@ -46,9 +53,19 @@ class DB:
     def all(self, query, args=()):
         return [dict(r) for r in self.run(query, args).fetchall()]
 
+    @contextmanager
     def batch(self):
         """Batch dependent-order writes whose results are not needed until exit."""
-        return self.connection.pipeline() if self.pg else nullcontext()
+        if self._batch_active:
+            yield
+            return
+        with database_batch():
+            with self.connection.pipeline() if self.pg else nullcontext():
+                self._batch_active = True
+                try:
+                    yield
+                finally:
+                    self._batch_active = False
 
 
 @contextmanager
@@ -69,7 +86,7 @@ def transaction(actor=None):
         if pg:
             # Send setup together instead of three cloud round trips. SET LOCAL
             # and the actor GUC are reverted by commit/rollback before reuse.
-            with conn.pipeline():
+            with db.batch():
                 db.run("SET LOCAL search_path TO hotel, public")
                 if actor:
                     db.run("SET LOCAL ROLE hotel_app")
@@ -119,7 +136,11 @@ def transaction(actor=None):
             operations.seed(db)
             operations.migrate_preview(db)
         yield db
-        conn.commit()
+        started = perf_counter()
+        try:
+            conn.commit()
+        finally:
+            database_elapsed(started, query=False)
     except BaseException:
         conn.rollback()
         raise
@@ -356,11 +377,12 @@ def create(db, p, analysis, key, source, room):
     )
     if not inserted.rowcount:
         return create(db, p, analysis, key, source, room)
-    db.run(
-        "INSERT INTO nlp_analysis VALUES(?,?,?,?,?,?,?)",
-        (str(uuid4()), p["hotel"], None, ref, "", json.dumps(analysis), now()),
-    )
-    record(db, ref, "Request received", p["id"])
+    with db.batch():
+        db.run(
+            "INSERT INTO nlp_analysis VALUES(?,?,?,?,?,?,?)",
+            (str(uuid4()), p["hotel"], None, ref, "", json.dumps(analysis), now()),
+        )
+        record(db, ref, "Request received", p["id"])
     from hotel.operations import dispatch
 
     dispatch(db, ref)

@@ -20,13 +20,23 @@ def staff_label(assignment):
 
 
 @st.fragment(run_every="15s")
-def history(jump):
-    if st.session_state.get("destination") in {"Reception", "My requests"}:
+def history(show_request):
+    if st.session_state.get("destination") == "Reception":
         st.rerun()
+    if st.session_state.get("selected_ticket"):
+        show_request()
+        return
     st.title("My requests")
     st.caption(
         "Your calls and requests, together. Follow progress and confirm when everything is fixed."
     )
+    # Streamlit removes widget state while the dedicated detail page is open.
+    for key, value in zip(
+        ("history_source", "history_status", "history_search"),
+        st.session_state.get("history_filters", ("All", "All", "")),
+    ):
+        if key not in st.session_state:
+            st.session_state[key] = value
     with st.container(horizontal=True):
         source = st.selectbox(
             "Source", ["All", "Call", "Text", "Voice message"], key="history_source"
@@ -64,7 +74,7 @@ def history(jump):
     )
     rows = result["items"]
     st.caption(
-        f"{result['total']} matching calls and requests · Select Open to see details below."
+        f"{result['total']} matching calls and requests · Select Open to view a record."
     )
     if not rows:
         st.info("No matching calls or requests yet.")
@@ -76,7 +86,6 @@ def history(jump):
             row = rows[action["row"]]
             if row["ticket"]:
                 st.session_state.selected_ticket = row["ticket"]
-                st.session_state.destination = "My requests"
             else:
                 st.session_state.completed_call = row["id"]
                 st.session_state.destination = "Reception"
@@ -104,10 +113,7 @@ def history(jump):
                 "Expected completion": estimate_text(r["completion_estimate"])
                 if r["state"] == "Open" and r["ticket"]
                 else "—",
-                "Action": "Selected"
-                if r["ticket"]
-                and r["ticket"] == st.session_state.get("selected_ticket")
-                else "Open",
+                "Action": "Open",
             }
             for r in rows
         ],
@@ -176,7 +182,9 @@ def related_calls(ref):
 
 @st.fragment(run_every="15s")
 def home_progress(jump):
-    tasks = request("GET", "/tickets")
+    tasks = request("GET", "/tickets", optional=True)
+    if tasks is None:
+        return
     opened = [t for t in tasks if t["status"] not in {"Resolved", "Closed"}]
     if not opened:
         return

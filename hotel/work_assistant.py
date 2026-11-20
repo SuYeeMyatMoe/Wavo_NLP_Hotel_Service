@@ -198,13 +198,12 @@ def submit(actor, turn_id, text, ref="", version=None, session_key=""):
             )
             return result
         tasks = db.all(
-            "SELECT t.*,w.version AS work_version FROM tickets t JOIN ticket_work w ON w.ticket=t.id WHERE t.hotel=? AND w.owner=? AND t.status IN ('Assigned','In progress','Escalated')",
-            (p["hotel"], actor),
+            "SELECT t.*,w.version AS work_version FROM tickets t JOIN ticket_work w ON w.ticket=t.id WHERE t.hotel=? AND w.owner=? AND t.status IN ('Assigned','In progress','Escalated')"
+            + (" AND t.id=?" if ref else ""),
+            (p["hotel"], actor, ref) if ref else (p["hotel"], actor),
         )
         references = re.findall(r"\bVF-[A-Z0-9]+\b", text, re.I)
         rooms = re.findall(r"\broom\s*#?\s*([\w-]+)", text, re.I)
-        if ref:
-            tasks = [t for t in tasks if t["id"] == ref]
         if references:
             tasks = [
                 t for t in tasks if t["id"].upper() in {r.upper() for r in references}
@@ -289,6 +288,8 @@ def submit(actor, turn_id, text, ref="", version=None, session_key=""):
             "source": source,
             **op.snapshot(db, t["id"]),
         }
+        result["status"] = op.LABELS[result["lifecycle"]["state"]]
+        result["version"] = work["version"] + int(action in {"start", "complete"})
         db.run(
             "INSERT INTO work_turns VALUES(?,?,?,?,?)",
             (actor, turn_id, digest, json.dumps(result), store.now()),

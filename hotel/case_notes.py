@@ -57,8 +57,7 @@ def minimal(a):
     }
 
 
-def record_turn(db, n, turn_id, original, english, analysis):
-    keep = consented(db, n["id"])
+def record_turn(db, n, turn_id, original, english, analysis, *, keep):
     payload = analysis if keep else minimal(analysis)
     db.run(
         "INSERT INTO nlp_analysis VALUES(?,?,?,?,?,?,?)",
@@ -109,6 +108,7 @@ def record_turn(db, n, turn_id, original, english, analysis):
             "UPDATE call_notes SET issue=?,analysis=? WHERE id=?",
             (saved.get("text", ""), json.dumps(saved), n["id"]),
         )
+        n.update(issue=saved.get("text", ""), analysis=json.dumps(saved))
 
 
 def structured(db, n):

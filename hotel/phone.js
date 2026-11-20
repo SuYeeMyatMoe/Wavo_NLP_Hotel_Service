@@ -16,6 +16,7 @@ export default function ({parentElement,data,setStateValue}) {
  const mark=code=>{if(!(code in s.metrics))s.metrics[code]=Math.round(performance.now()-s.started);};
  const show=(phase,message='')=>{s.phase=phase;s.message=message;s.render();};
  s.render=()=>{
+   if(s.data.retryFinalization&&s.data.retryFinalization!==s.lastRetry){s.lastRetry=s.data.retryFinalization;if(s.call||s.startKey)queueMicrotask(()=>{void finish();});}
    if(s.data.dismissedCall&&s.data.dismissedCall===s.completedCall&&!active()&&!s.ending){s.completedCall=null;s.phase='idle';s.message='';help.textContent='';}
    box.hidden=s.data.visible===false&&!active()&&!s.ending;
    if(!box.hidden&&!s.mascotMounted&&typeof WavoMascot!=='undefined'){
@@ -62,16 +63,23 @@ export default function ({parentElement,data,setStateValue}) {
    if(!s.data.api){s.call=null;s.startKey=null;s.emit('ended',true);return;}
    if(!s.startKey&&!s.call)return; // Microphone permission was still pending.
    const path=s.startKey?'/calls/start/'+s.startKey+'/cancel':'/calls/'+s.call.id+'/end';
+   s.finalizingKey=s.startKey||completedId;s.endedAt=performance.now();
+   s.popupObserver?.disconnect();
+   if(!unmount&&typeof MutationObserver!=='undefined'){
+     s.popupObserver=new MutationObserver(()=>{const dialog=document.querySelector('[role="dialog"]');if(dialog?.textContent.includes('Request update')){s.metrics.popup_visible_ms=Math.round(performance.now()-s.endedAt);s.popupObserver.disconnect();s.render();}});
+     s.popupObserver.observe(document.body,{childList:true,subtree:true});
+   }
+   if(!unmount)s.emit('finalizing',{key:s.finalizingKey,call_id:completedId||null,status:'pending'});
    show('ended','Checking your request…');
    s.ending=(async()=>{
      // One logical idempotent end action; retry only that action if delivery fails.
      for(let attempt=0;attempt<3;attempt++){
-       try{const result=await api(path,{},'POST',unmount);s.completedCall=result.call_id||completedId||null;s.call=null;s.startKey=null;help.textContent='';if(!unmount&&s.completedCall)s.emit('completed_call',s.completedCall);else show('ended');return;}
-       catch{if(attempt===2){show('ended','Call finalization needs a retry');help.textContent='Microphone is off. Could not confirm hang-up with the hotel. Tap Retry finalization.';return;}await new Promise(r=>setTimeout(r,500*(attempt+1)));}
+       try{const result=await api(path,{},'POST',unmount);s.metrics.finalization_ms=Math.round(performance.now()-s.endedAt);s.completedCall=result.call_id||completedId||null;s.call=null;s.startKey=null;help.textContent='';if(!unmount){s.emit('finalizing',{key:s.finalizingKey,call_id:s.completedCall,status:'complete',result:result.result||null});if(s.completedCall)s.emit('completed_call',s.completedCall);else show('ended');}else show('ended');return;}
+       catch{if(attempt===2){show('ended','Call finalization needs a retry');help.textContent='Microphone is off. Could not confirm hang-up with the hotel. Tap Retry finalization.';if(!unmount)s.emit('finalizing',{key:s.finalizingKey,call_id:completedId||null,status:'failed'});return;}await new Promise(r=>setTimeout(r,500*(attempt+1)));}
      }
    })();s.render();await s.ending;s.ending=null;s.render();
  }
- s.dispose=()=>{void finish(true);window.removeEventListener('pagehide',s.dispose);};window.addEventListener('pagehide',s.dispose);
+ s.dispose=()=>{s.popupObserver?.disconnect();void finish(true);window.removeEventListener('pagehide',s.dispose);};window.addEventListener('pagehide',s.dispose);
  function later(fn,ms){s.timers.push(setTimeout(fn,ms));}
  function playback(){
    if(!s.room)return;
@@ -127,8 +135,8 @@ export default function ({parentElement,data,setStateValue}) {
        mark('remote_audio_ms');show(s.muted?'muted':'listening');
      });
      room.on(RoomEvent.ParticipantAttributesChanged,(_,participant)=>{if(valid()&&participant.identity!==room.localParticipant.identity){s.agentState=participant.attributes?.['lk.agent.state'];if(s.agentState==='thinking')show('thinking');else if(s.agentState==='speaking')show('speaking');else if(s.agentState==='listening')show(s.muted?'muted':'listening');}});
-     room.on(RoomEvent.ActiveSpeakersChanged,speakers=>{if(valid())show(speakers.some(p=>p.identity!==room.localParticipant.identity)?'speaking':s.agentState==='thinking'?'thinking':s.muted?'muted':s.audio.length?'listening':'waiting');});
-     room.on(RoomEvent.TranscriptionReceived,segments=>{if(valid()&&segments.length)caption.textContent=segments[segments.length-1].text;});
+     room.on(RoomEvent.ActiveSpeakersChanged,speakers=>{if(valid()){const local=speakers.some(p=>p.identity===room.localParticipant.identity);if(s.localSpeaking&&!local){s.speechEndedAt=performance.now();s.awaitingReplySignal=true;}s.localSpeaking=local;show(speakers.some(p=>p.identity!==room.localParticipant.identity)?'speaking':s.agentState==='thinking'?'thinking':s.muted?'muted':s.audio.length?'listening':'waiting');}});
+     room.on(RoomEvent.TranscriptionReceived,(segments,participant)=>{if(valid()&&segments.length){caption.textContent=segments[segments.length-1].text;if(participant?.identity===room.localParticipant.identity&&segments.some(x=>x.final)&&s.speechEndedAt){s.metrics.last_transcript_ms=Math.round(performance.now()-s.speechEndedAt);}}});
      room.on(RoomEvent.Reconnecting,()=>{if(valid())show('reconnecting');});
      room.on(RoomEvent.Reconnected,()=>{if(valid())show(s.muted?'muted':'listening');});
      room.on(RoomEvent.Disconnected,()=>{if(valid()){void finish();help.textContent='Call disconnected. You can call again.';}});
@@ -139,7 +147,7 @@ export default function ({parentElement,data,setStateValue}) {
      const analyser=s.audioContext.createAnalyser();analyser.fftSize=256;s.audioContext.createMediaStreamSource(stream).connect(analyser);const samples=new Uint8Array(analyser.fftSize);
      s.meterTimer=setInterval(()=>{
        analyser.getByteTimeDomainData(samples);const level=s.muted?0:Math.min(1,Math.sqrt(samples.reduce((n,v)=>n+(v-128)**2,0)/samples.length)/32);meter.value=level;box.style.setProperty('--voice-level',String(level));
-       if(s.remoteAnalyser&&!('first_signal_ms' in s.metrics)){s.remoteAnalyser.getByteTimeDomainData(samples);if(samples.some(v=>Math.abs(v-128)>3)){mark('first_signal_ms');s.render();}}
+       if(s.remoteAnalyser){s.remoteAnalyser.getByteTimeDomainData(samples);if(samples.some(v=>Math.abs(v-128)>3)){mark('first_signal_ms');if(s.awaitingReplySignal&&!s.localSpeaking){s.metrics.last_audible_reply_ms=Math.round(performance.now()-s.speechEndedAt);s.awaitingReplySignal=false;}s.render();}}
      },100);
      later(()=>{if(valid()&&!s.audio.length)help.textContent='Wavo has not joined yet. End this call and retry, or send a message below.';},10000);
      later(()=>{if(valid()&&!s.audio.length){void finish();help.textContent='AI reception is unavailable right now. Please retry or send a message.';}},30000);

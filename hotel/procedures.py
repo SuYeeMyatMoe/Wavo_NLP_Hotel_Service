@@ -15,6 +15,7 @@ DEPARTMENTS = ["Maintenance", "Housekeeping", "Front Desk"]
 
 
 def seed(db):
+    seed_electrical(db)
     examples = [
         (
             "ac",
@@ -68,6 +69,19 @@ def seed(db):
         db.run(
             "UPDATE service_procedures SET completion_minutes=15 WHERE id='demo-ac' AND hotel='demo' AND completion_minutes IS NULL"
         )
+
+
+def seed_electrical(db):
+    # Do not add a competing default if a hotel has already configured this category.
+    db.run(
+        "INSERT INTO service_procedures(id,hotel,category,department,title,body) "
+        "SELECT 'demo-electrical','demo','Electrical','Maintenance','Lighting and electrical repair',? "
+        "WHERE NOT EXISTS(SELECT 1 FROM service_procedures WHERE hotel='demo' AND category='Electrical') "
+        "ON CONFLICT DO NOTHING",
+        (
+            "Confirm the affected light or fixture and room access permission. A qualified maintenance worker must inspect and repair the fault, test the lighting, and ask the guest to confirm. Escalate sparks, exposed wires, smoke, or electric shock for urgent safety review.",
+        ),
+    )
 
 
 def select(db, hotel, extracted, urgency="Moderate"):

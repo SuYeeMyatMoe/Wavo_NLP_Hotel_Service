@@ -20,7 +20,7 @@ def test_display_cache_is_scoped_to_session_token_and_invalidated_on_write(monke
         calls.append((method, actor))
         return SimpleNamespace(status_code=200, json=lambda: {"actor": actor})
 
-    monkeypatch.setattr(ui_client.requests, "request", transport)
+    monkeypatch.setattr(ui_client, "http_request", transport)
     first = ui_client.request("GET", "/me")
     first["actor"] = "edited display"
     assert ui_client.request("GET", "/me")["actor"] == "Bearer guest-a"
@@ -45,7 +45,7 @@ def test_display_cache_expires_and_operational_records_are_never_cached(monkeypa
         calls.append(url)
         return SimpleNamespace(status_code=200, json=lambda: {"version": len(calls)})
 
-    monkeypatch.setattr(ui_client.requests, "request", transport)
+    monkeypatch.setattr(ui_client, "http_request", transport)
     ui_client.request("GET", "/me")
     clock[0] = 61
     assert ui_client.request("GET", "/me")["version"] == 2

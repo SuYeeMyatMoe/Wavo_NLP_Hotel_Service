@@ -6,11 +6,12 @@ from copy import deepcopy
 from functools import lru_cache
 import requests
 import streamlit as st
-from fastapi.testclient import TestClient
+from hotel.http_client import request as http_request
 
 
 @lru_cache(maxsize=1)
 def local():
+    from fastapi.testclient import TestClient
     from hotel.service import app
 
     return TestClient(app, raise_server_exceptions=False)
@@ -42,7 +43,7 @@ def invalidate():
     _cache().clear()
 
 
-def request(method, path, **kwargs):
+def request(method, path, *, optional=False, **kwargs):
     cache = _cache()
     ttl = {"/me": 60, "/profile/details": 30, "/workspace/updates": 10}.get(path, 0)
     key = (path, json.dumps(kwargs, sort_keys=True))
@@ -61,15 +62,20 @@ def request(method, path, **kwargs):
         headers["Authorization"] = "Bearer " + st.session_state.auth["access_token"]
     try:
         if url:
-            r = requests.request(
+            r = http_request(
                 method,
                 url + path,
                 headers=headers,
                 timeout=(
                     8,
                     180
-                    if path in {"/voice-messages", "/tickets"}
-                    or path.endswith(("/turn", "/utterance"))
+                    if method != "GET"
+                    and (
+                        path in {"/voice-messages", "/tickets", "/work-assistant/turns"}
+                        or path.endswith(("/turn", "/utterance"))
+                    )
+                    else 8
+                    if optional
                     else 20,
                 ),
                 **kwargs,
@@ -77,6 +83,11 @@ def request(method, path, **kwargs):
         else:
             r = local().request(method, path, headers=headers, **kwargs)
     except requests.RequestException:
+        if optional:
+            st.warning(
+                "Request updates are temporarily unavailable. You can still contact AI reception."
+            )
+            return None
         st.error("The hotel service is unavailable. Your input is still here.")
         st.stop()
     if not 200 <= r.status_code < 300:
@@ -92,6 +103,8 @@ def request(method, path, **kwargs):
         if r.status_code == 401 and st.button("Sign in again"):
             st.session_state.clear()
             st.rerun()
+        if optional:
+            return None
         st.stop()
     value = r.json()
     if method == "GET" and ttl:

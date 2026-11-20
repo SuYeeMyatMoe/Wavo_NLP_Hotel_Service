@@ -175,6 +175,27 @@ COPY = {
         "Bagaimana perkhidmatannya?",
         "ဝန်ဆောင်မှု ဘယ်လိုရှိပါသလဲ။",
     ),
+    "How was the service? (optional)": (
+        "How was the service? (optional)",
+        "服务怎么样？（选填）",
+        "सेवा कैसी थी? (वैकल्पिक)",
+        "Bagaimana perkhidmatannya? (pilihan)",
+        "ဝန်ဆောင်မှု ဘယ်လိုရှိပါသလဲ။ (ဖြေဆိုလိုမှသာ)",
+    ),
+    "Send rating": (
+        "Send rating",
+        "提交评分",
+        "रेटिंग भेजें",
+        "Hantar penilaian",
+        "အဆင့်သတ်မှတ်ချက် ပို့ရန်",
+    ),
+    "Thank you. Your rating is {stars}/5 stars.": (
+        "Thank you. Your rating is {stars}/5 stars.",
+        "谢谢，您的评分为 {stars}/5 星。",
+        "धन्यवाद। आपकी रेटिंग 5 में से {stars} स्टार है।",
+        "Terima kasih. Penilaian anda ialah {stars}/5 bintang.",
+        "ကျေးဇူးတင်ပါသည်။ ကြယ် ၅ ပွင့်အနက် {stars} ပွင့် ပေးထားပါသည်။",
+    ),
     "Send feedback": (
         "Send feedback",
         "提交反馈",

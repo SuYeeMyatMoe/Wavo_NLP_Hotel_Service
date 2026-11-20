@@ -156,9 +156,8 @@ def test_no_room_and_unresolved_exit(client):
 @pytest.mark.parametrize(
     "text",
     [
-        "Please give me a refund.",
-        "I smell gas in my room.",
         "I want to speak with a person.",
+        "Please connect me to reception.",
     ],
 )
 def test_real_reception_handoff(client, text):
@@ -194,6 +193,128 @@ def test_pending_handoff_does_not_repeat_announcement(client):
     assert len(client.get("/tickets").json()) == 1
 
 
+@pytest.mark.parametrize(
+    "text", ["The light is not working", "My room light is broken"]
+)
+def test_lighting_offers_then_assigns_maintenance_once(client, text):
+    key = start(client)
+    offered = turn(client, key, text)
+    assert offered["outcome"] == "Service offered" and not offered["ticket"]
+    assert "Shall I send Maintenance" in offered["reply"]
+    assert not turn(client, key, "Don't send anyone yet")["ticket"]
+    uid = str(uuid4())
+    assigned = turn(client, key, "Yes, please send maintenance", uid)
+    assert assigned["outcome"] == "Task assigned"
+    assert (
+        turn(client, key, "Yes, please send maintenance", uid)["ticket"]
+        == assigned["ticket"]
+    )
+    assert turn(client, key, "Okay")["ticket"] == assigned["ticket"]
+    task = client.get("/tickets/" + assigned["ticket"]).json()
+    assert task["department"] == "Maintenance"
+    assert task["assignment"]["staff"] in {"demo-maintenance", "demo-maintenance-2"}
+    assert len(client.get("/tickets").json()) == 1
+    assert client.post(f"/desk/cases/{key}/accept").status_code == 422
+
+
+@pytest.mark.parametrize(
+    "text", ["Please give me a refund.", "I smell gas in my room."]
+)
+def test_reception_tasks_do_not_invite_a_live_participant(client, text):
+    key = start(client)
+    result = turn(client, key, text)
+    assert result["outcome"] == "Reception follow-up" and result["ticket"]
+    assert "join" not in result["reply"] and "stay on" not in result["reply"]
+    assert client.post(f"/desk/cases/{key}/accept").status_code == 422
+    task = client.get("/tickets/" + result["ticket"]).json()
+    assert task["department"] == "Front Desk" and task["assignment"]
+    if "gas" in text:
+        assert task["urgency"] == "Critical" and task["status"] == "Escalated"
+    status = turn(client, key, "Okay")
+    assert status["ticket"] == result["ticket"]
+    assert "not accepted" not in status["reply"]
+    human = turn(client, key, "I want to speak with a person")
+    assert human["outcome"] == "Waiting for reception"
+    assert human["ticket"] == result["ticket"]
+    assert client.post(f"/desk/cases/{key}/accept").status_code == 200
+
+
+def test_unavailable_maintenance_creates_followup_not_handoff(client):
+    key = start(client)
+    turn(client, key, "The light is not working")
+    with store.transaction() as db:
+        db.run("UPDATE staff_roster SET available=0 WHERE department='Maintenance'")
+    result = turn(client, key, "Yes, send maintenance")
+    assert result["outcome"] == "Reception follow-up"
+    task = client.get("/tickets/" + result["ticket"]).json()
+    assert task["department"] == "Front Desk"
+    assert task["assignment"]["staff"] in {"demo-reception", "demo-staff"}
+    assert "No repair visit" in result["reply"]
+    assert "not accepted" not in turn(client, key, "The light is still broken")["reply"]
+
+
+def test_failed_wifi_guidance_and_missing_procedure_are_followup(client):
+    key = start(client)
+    turn(client, key, "How do I connect to Wi-Fi?")
+    result = turn(client, key, "It still does not work")
+    assert result["outcome"] == "Reception follow-up"
+    assert "join" not in result["reply"]
+    client.post(f"/calls/{key}/end", headers=guest)
+    key = start(client)
+    with store.transaction() as db:
+        db.run("UPDATE service_procedures SET enabled=0 WHERE category='Electrical'")
+    result = turn(client, key, "The light is not working")
+    assert result["outcome"] == "Reception follow-up"
+    assert "join" not in result["reply"]
+
+
+def test_negated_human_request_keeps_service_flow(client):
+    key = start(client)
+    result = turn(client, key, "The light is not working. Don't call reception.")
+    assert result["outcome"] == "Service offered"
+
+
+def test_offer_uses_approved_department_even_when_prediction_disagrees(
+    client, monkeypatch
+):
+    from hotel import concierge
+
+    original = concierge.analyze
+
+    def disagree(*args, **kwargs):
+        return {**original(*args, **kwargs), "department": "Front Desk"}
+
+    monkeypatch.setattr(concierge, "analyze", disagree)
+    key = start(client)
+    assert (
+        "Shall I send Maintenance"
+        in turn(client, key, "The light is not working")["reply"]
+    )
+    assert turn(client, key, "Yes")["outcome"] == "Task assigned"
+
+
+def test_electrical_seed_preserves_customized_or_disabled_guidance(client):
+    from hotel.procedures import seed_electrical
+
+    start(client)
+    with store.transaction() as db:
+        db.run(
+            "UPDATE service_procedures SET id='hotel-custom-electrical',body='Hotel-specific instructions',enabled=0 WHERE id='demo-electrical'"
+        )
+        seed_electrical(db)
+        seed_electrical(db)
+        rows = db.all(
+            "SELECT id,body,enabled FROM service_procedures WHERE hotel='demo' AND category='Electrical'"
+        )
+        assert rows == [
+            {
+                "id": "hotel-custom-electrical",
+                "body": "Hotel-specific instructions",
+                "enabled": 0,
+            }
+        ]
+
+
 def test_same_hotel_private_notes(client):
     key = start(client)
     client.post(f"/calls/{key}/end", headers=guest)
@@ -201,6 +322,78 @@ def test_same_hotel_private_notes(client):
         db.run("UPDATE profiles SET hotel='elsewhere' WHERE id='demo-staff'")
     assert client.get("/desk/cases").json() == []
     assert client.get(f"/calls/{key}/case").status_code == 403
+
+
+@pytest.mark.parametrize("reply", ["OK", "O.K.", "O K", "Uh... O.K.", "That's okay."])
+def test_spoken_ok_confirms_pending_offer_without_restarting_intake(client, reply):
+    key = start(client)
+    first = turn(client, key, "The shower is leaking")
+    assert first["outcome"] == "Service offered"
+    approved = turn(client, key, reply)
+    assert approved["outcome"] == "Task assigned" and approved["ticket"]
+    for acknowledgement in ("O.K.", "Oh, okay.", "Thank you"):
+        result = turn(client, key, acknowledgement)
+        assert result["outcome"] == "Task assigned"
+        assert result["ticket"] == approved["ticket"]
+        assert result["reply"].startswith("You're welcome.")
+    assert len(client.get("/tickets").json()) == 1
+
+
+def test_unclear_response_keeps_the_service_question_and_refusal_does_not_dispatch(
+    client,
+):
+    key = start(client)
+    turn(client, key, "The shower is leaking")
+    for reply in ("Hmm", "O.K.?", "O.K., don't send anyone"):
+        result = turn(client, key, reply)
+        assert result["outcome"] == "Service offered" and not result["ticket"]
+        assert result["reply"] == "Shall I send Maintenance to room 305?"
+    assert turn(client, key, "OK")["outcome"] == "Task assigned"
+
+
+def test_ok_without_an_offer_does_not_create_work(client):
+    key = start(client)
+    result = turn(client, key, "O.K.")
+    assert result["outcome"] == "Listening" and not result["ticket"]
+
+
+def test_acknowledgement_after_resolution_does_not_restart_intake(client):
+    key = start(client)
+    turn(client, key, "How do I connect to Wi-Fi?")
+    assert turn(client, key, "Yes, I am online")["outcome"] == "Resolved by guest"
+    assert turn(client, key, "Oh, okay.")["reply"].startswith("You're welcome.")
+    assert not turn(client, key, "Hmm")["ticket"]
+    assert not client.get("/tickets").json()
+
+
+def test_live_worker_ok_uses_pending_offer(client, monkeypatch):
+    monkeypatch.setenv("CONCIERGE_MODE", "auto")
+    for name in (
+        "LIVEKIT_API_KEY",
+        "LIVEKIT_API_SECRET",
+        "LIVEKIT_URL",
+        "GOOGLE_API_KEY",
+        "GEMINI_LIVE_MODEL",
+    ):
+        monkeypatch.setenv(name, "test")
+    key = start(client)
+    path = f"/internal/calls/{key}/turn"
+    responses = []
+    for text in ("The shower is leaking", "O.K.", "Oh, okay."):
+        response = client.post(
+            path,
+            headers={"x-worker-token": worker_token(key)},
+            json={"text": text, "turn_id": str(uuid4())},
+        )
+        response.raise_for_status()
+        responses.append(response.json())
+    assert [r["outcome"] for r in responses] == [
+        "Service offered",
+        "Task assigned",
+        "Task assigned",
+    ]
+    assert responses[2]["reply"].startswith("You're welcome.")
+    assert responses[1]["ticket"] == responses[2]["ticket"]
 
 
 def test_worker_posts_live_transcript_to_api(client, monkeypatch):

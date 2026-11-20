@@ -113,6 +113,78 @@ def report(client, ref, text, who=W, uid=None):
     )
 
 
+def test_done_click_and_optional_rating(client):
+    ref = create(client)
+    ticket = "/tickets/" + ref
+    version = client.get(ticket, headers=W).json()["work"]["version"]
+    body = {"version": version, "key": str(uuid4())}
+    assert client.post(ticket + "/done", headers=G, json=body).status_code == 403
+    assert (
+        client.post(
+            ticket + "/done", headers={"x-preview-user": "demo-staff"}, json=body
+        ).status_code
+        == 403
+    )
+    for _ in range(2):
+        client.post(ticket + "/done", headers=W, json=body).raise_for_status()
+    pending = client.get(ticket, headers=G).json()
+    assert pending["awaiting_confirmation"]
+    notifications = client.get("/notifications", headers=G).json()
+    assert (
+        sum(n["ticket"] == ref and n["kind"] == "confirmation" for n in notifications)
+        == 1
+    )
+    path = ticket + "/feedback"
+    assert client.post(path, headers=G, json={"value": "1/5"}).status_code == 403
+    client.post(
+        ticket + "/confirm",
+        headers=G,
+        json={"resolved": True, "version": pending["work"]["version"]},
+    ).raise_for_status()
+    assert client.get(ticket, headers=G).json()["rating"] is None
+    for _ in range(2):
+        client.post(path, headers=G, json={"value": "1/5"}).raise_for_status()
+    result = client.get(ticket, headers=G).json()
+    assert result["rating"] == 1
+    assert sum(e["action"] == "Guest feedback: 1/5" for e in result["events"]) == 1
+    assert client.get(ticket + "/result", headers=G).json()["rating"] == 1
+
+
+def test_recorded_work_update_returns_recognized_words_and_allows_typed_retry(
+    client, monkeypatch
+):
+    import base64
+    import io
+    import wave
+    from hotel import languages
+
+    ref = create(client)
+    stream = io.BytesIO()
+    with wave.open(stream, "wb") as wav:
+        wav.setparams((1, 2, 16000, 0, "NONE", ""))
+        wav.writeframes(bytes(3200))
+    body = {
+        "ref": ref,
+        "audio": base64.b64encode(stream.getvalue()).decode(),
+        "turn_id": str(uuid4()),
+    }
+    monkeypatch.setattr(languages, "transcribe_auto", lambda *args: ("", "en"))
+    silence = client.post("/work-assistant/turns", headers=W, json=body).json()
+    assert not silence["changed"] and "Record again" in silence["reply"]
+    monkeypatch.setattr(
+        languages, "transcribe_auto", lambda *args: ("I started the repair", "en")
+    )
+    result = client.post("/work-assistant/turns", headers=W, json=body).json()
+    assert (
+        result["recognized"] == "I started the repair" and result["action"] == "start"
+    )
+    body.update(turn_id=str(uuid4()), text="I finished the repair")
+    assert (
+        client.post("/work-assistant/turns", headers=W, json=body).json()["action"]
+        == "complete"
+    )
+
+
 def test_room_305_reopen_and_confirm(client):
     ref = create(client)
     t = client.get("/tickets/" + ref, headers=W).json()

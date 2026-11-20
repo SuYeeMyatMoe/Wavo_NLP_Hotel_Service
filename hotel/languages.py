@@ -5,11 +5,11 @@ import hashlib
 import io
 import wave
 import re
+from threading import Lock, Thread
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal
 
 from hotel.language_models import BASE
-from hotel.nlp import analyze
 
 Language = Literal["en", "zh", "hi", "ms", "my"]
 InputLanguage = Literal["auto", "en", "zh", "hi", "ms", "my"]
@@ -121,7 +121,7 @@ def translate(text, language, target):
 
 
 @lru_cache(maxsize=1)
-def recognizer():
+def _load_recognizer():
     from faster_whisper import WhisperModel
 
     return WhisperModel(
@@ -131,6 +131,35 @@ def recognizer():
         cpu_threads=4,
         local_files_only=True,
     )
+
+
+_speech_lock = Lock()
+_warmup_lock = Lock()
+_warmup_thread = None
+
+
+def recognizer():
+    # A first recording can arrive while the staff recorder is warming up.
+    with _speech_lock:
+        return _load_recognizer()
+
+
+def warm_staff_recorder():
+    global _warmup_thread
+
+    def load():
+        try:
+            recognizer()
+        except (ImportError, OSError, RuntimeError, ValueError):
+            pass  # Submitting a recording retries and displays the normal error.
+
+    with _warmup_lock:
+        if _load_recognizer.cache_info().currsize or (
+            _warmup_thread and _warmup_thread.is_alive()
+        ):
+            return
+        _warmup_thread = Thread(target=load, name="staff-speech-warmup", daemon=True)
+        _warmup_thread.start()
 
 
 def wav_bytes(payload):
@@ -179,7 +208,10 @@ def guest_analysis(text, language, raw=None):
             english = to_english(original, language)
     except (ImportError, RuntimeError, OSError, ValueError):
         pass  # Preserve the original for staff when inference is unavailable.
+    result: dict[str, Any]
     if english and len(english) <= 8000:
+        from hotel.nlp import analyze
+
         result = analyze(english)
     else:
         result = {

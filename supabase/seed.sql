@@ -19,5 +19,6 @@ INSERT INTO service_procedures(id,hotel,category,department,title,body,approval,
  ('demo-wifi','demo','Wi-Fi','Front Desk','Guest Wi-Fi connection','Select Hotel-Guest in Wi-Fi settings. Open a browser and choose Guest access on the welcome page.','',NULL),
  ('demo-housekeeping','demo','Housekeeping','Housekeeping','Housekeeping service','Confirm items and access permission. Deliver items and ask the guest to confirm.','',NULL) ON CONFLICT DO NOTHING;
 INSERT INTO service_times VALUES('demo','Maintenance',15) ON CONFLICT DO NOTHING;
+\ir migrations/20261120053741_demo_electrical_procedure.sql
 INSERT INTO room_inventory VALUES('demo','305','Standard',0),('demo','308','Standard',1) ON CONFLICT DO NOTHING;
 COMMIT;

@@ -96,6 +96,12 @@ def provision(auth_only=False):
         return
     with psycopg.connect(os.environ["DATABASE_URL"], connect_timeout=10) as db:
         db.execute("SET LOCAL search_path TO hotel, public")
+        db.execute(
+            (
+                ROOT
+                / "supabase/migrations/20261120053741_demo_electrical_procedure.sql"
+            ).read_text(encoding="utf8")
+        )
         for key, uid in identities.items():
             role = (
                 "guest"

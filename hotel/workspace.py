@@ -1,6 +1,7 @@
 """Small staff workspace: assigned work, conversational updates and an audit trail."""
 
 import base64
+import hashlib
 import json
 import os
 from uuid import uuid4
@@ -10,7 +11,61 @@ from hotel.ui_client import request
 from hotel.issue_labels import problem_label, MISSING
 
 
-def assistant(ref="", version=None, room=""):
+def work_receipt(ref):
+    result = st.session_state.get("work_reply_" + ref)
+    if result:
+        if result.get("recognized"):
+            st.text("You said: " + result["recognized"])
+        if result.get("changed"):
+            st.success(result["reply"])
+        else:
+            st.info(result["reply"])
+
+
+def submit_report(ref, version, form_key, ticket):
+    text = st.session_state[form_key + "_text"]
+    audio = st.session_state[form_key + "_audio"]
+    draft = (
+        ref,
+        version,
+        text,
+        hashlib.sha256(audio.getbuffer()).digest() if audio else None,
+    )
+    if st.session_state.get("work_draft") != draft:
+        st.session_state.work_draft = draft
+        st.session_state.work_turn_id = str(uuid4())
+    with st.spinner("Processing your work update…"):
+        result = request(
+            "POST",
+            "/work-assistant/turns",
+            json={
+                "turn_id": st.session_state.work_turn_id,
+                "text": text,
+                "audio": base64.b64encode(audio.getvalue()).decode()
+                if audio and not text.strip()
+                else "",
+                "ref": ref,
+                "version": version,
+            },
+        )
+    st.session_state["work_reply_" + ref] = result
+    if result.get("changed"):
+        st.session_state["work_epoch_" + ref] = st.session_state.work_turn_id
+        st.session_state.pop("work_draft", None)
+        if ticket is not None:
+            if result.get("action") in {"start", "complete", "blocked"}:
+                ticket.update(
+                    status=result["status"],
+                    lifecycle=result["lifecycle"],
+                    assignment=result["assignment"],
+                    awaiting_confirmation=result["awaiting_confirmation"],
+                )
+                ticket["work"]["version"] = result["version"]
+            else:
+                ticket.update(request("GET", "/tickets/" + ref))
+
+
+def assistant(ref="", version=None, room="", ticket=None):
     st.subheader("Work assistant")
     st.caption(
         "Tell Wavo what you started, finished, or need help with. Completion stays open until the guest confirms."
@@ -52,8 +107,11 @@ def assistant(ref="", version=None, room=""):
         st.caption(
             "Test mode · local speech recognition and rules for interpreting reports"
         )
-    with st.form("work_report_" + ref):
-        text = st.text_area(
+    form_key = (
+        "work_report_" + ref + "_" + st.session_state.get("work_epoch_" + ref, "")
+    )
+    with st.form(form_key):
+        st.text_area(
             "Your work update",
             placeholder=(
                 f"I started work in Room {room}. / I completed the work and checked the result."
@@ -61,33 +119,18 @@ def assistant(ref="", version=None, room=""):
                 else "I started the repair in Room [room number]."
             ),
             max_chars=4000,
+            key=form_key + "_text",
         )
-        audio = st.audio_input("Or record an update", sample_rate=16000)
-        sent = st.form_submit_button("Send update", type="primary")
-    draft = (ref, version, text, audio.getvalue() if audio else b"")
-    if st.session_state.get("work_draft") != draft:
-        st.session_state.work_draft = draft
-        st.session_state.work_turn_id = str(uuid4())
-    if sent:
-        result = request(
-            "POST",
-            "/work-assistant/turns",
-            json={
-                "turn_id": st.session_state.work_turn_id,
-                "text": text,
-                "audio": base64.b64encode(audio.getvalue()).decode() if audio else "",
-                "ref": ref,
-                "version": version,
-            },
+        st.audio_input(
+            "Or record an update", sample_rate=16000, key=form_key + "_audio"
         )
-        st.session_state.work_reply = result
-        if result.get("changed"):
-            st.session_state.pop("work_draft", None)
-            st.rerun()
-    if result := st.session_state.get("work_reply"):
-        st.info(result["reply"])
-        if result.get("source"):
-            st.caption(result["source"])
+        st.form_submit_button(
+            "Send update",
+            type="primary",
+            on_click=submit_report,
+            args=(ref, version, form_key, ticket),
+        )
+    work_receipt(ref)
 
 
 def notifications(jump, rows=None, profile=None):
@@ -136,6 +179,135 @@ def activity(ref=""):
         st.caption("No automated actions recorded yet.")
 
 
+def mark_done(ticket):
+    ref = ticket["id"]
+    version = ticket["work"]["version"]
+    click_key = f"done_key_{ref}_{version}"
+    request(
+        "POST",
+        f"/tickets/{ref}/done",
+        json={
+            "key": st.session_state.setdefault(click_key, str(uuid4())),
+            "version": version,
+        },
+    )
+    ticket.update(status="Awaiting confirmation", awaiting_confirmation=True)
+    st.session_state.pop("work_reply_" + ref, None)
+
+
+@st.fragment
+def task_panel(t, me, evidence):
+    ref = t["id"]
+    w = t["work"]
+    label = words(problem_label(w["extraction"]))
+    st.subheader(f"Room {t['room']} · {label}")
+    st.caption(f"{ref} · {t['urgency']} · {t['status']}")
+    if label == MISSING:
+        st.caption(
+            "The earlier record contains no specific problem detail. Reception needs to clarify with the guest."
+        )
+    with st.expander("Problem details and priority"):
+        issue = w["extraction"].get("issue", "")
+        if issue and issue not in {label, "General request"}:
+            st.write(issue)
+        st.write(
+            t["analysis"].get("rule")
+            or (
+                "Urgency is unassessed and needs immediate human review."
+                if t["urgency"] == "Unassessed"
+                else f"{t['urgency']} priority from the urgency classifier."
+            )
+        )
+        st.caption(
+            "Critical → Unassessed → Urgent → Moderate → Low; oldest first within each priority. Sentiment does not change the rank."
+        )
+    for c in w["extraction"].get("constraints", []):
+        st.write("• " + c["constraint"])
+    st.info(w["solution"]["next_action"])
+    st.caption(w["solution"]["reason"])
+    assignment = t.get("assignment")
+    from hotel.post_call_ui import edit_estimate
+
+    edit_estimate(t, me)
+    if t["analysis"].get("service_mode") == "reception_review":
+        st.warning(
+            "Reception follow up · clarify the issue or permission before arranging physical work."
+        )
+        if st.button("Ask guest for details", key="ask_details_" + ref):
+            request("POST", f"/tickets/{ref}/ask-details")
+            st.success("Sent. The guest can update this same request in My requests.")
+        st.caption(
+            "Start work to acknowledge the reception review. A review cannot be submitted as a completed repair."
+        )
+        if st.button("Check service assignment", key="recheck_" + ref):
+            result = request(
+                "POST",
+                "/work-assistant/turns",
+                json={
+                    "turn_id": str(uuid4()),
+                    "text": "Retry assignment",
+                    "ref": ref,
+                    "version": w["version"],
+                },
+            )
+            if result.get("changed"):
+                st.rerun()
+            st.info(result["reply"])
+    if assignment:
+        st.caption(
+            f"Assigned to {assignment['name']} · Service target {assignment['service_due'][:16]} UTC"
+        )
+    if (
+        (
+            assignment
+            and assignment["staff"] == me["id"]
+            or not assignment
+            and w["owner"] == me["id"]
+        )
+        and t["status"] in {"Assigned", "In progress", "Escalated"}
+        and not t.get("awaiting_confirmation")
+    ):
+        if t["analysis"].get("service_mode") != "reception_review":
+            st.button(
+                "Mark as done",
+                key="done_" + ref,
+                type="primary",
+                on_click=mark_done,
+                args=(t,),
+            )
+        assistant(ref, w["version"], t["room"], t)
+    elif t["status"] == "Awaiting confirmation" or t.get("awaiting_confirmation"):
+        st.button(
+            "Marked as done",
+            icon=":material/check:",
+            disabled=True,
+            key="done_recorded_" + ref,
+        )
+        st.info(
+            "Staff marked the work as done. The guest has been asked to confirm whether the issue is fixed."
+        )
+        work_receipt(ref)
+    elif t["status"] == "Escalated":
+        st.warning(t["lifecycle"]["reason"])
+        if me["role"] == "manager" and not assignment:
+            st.caption(
+                "After correcting guidance or roster availability, tell the assistant: retry assignment."
+            )
+            assistant(ref, w["version"], t["room"], t)
+    with st.expander("NLP evidence", on_change="rerun") as panel:
+        if panel.open:
+            evidence(t["analysis"])
+    with st.expander("Assignment and work history", on_change="rerun") as panel:
+        if panel.open:
+            st.dataframe(request("GET", f"/tickets/{ref}/assignments"), hide_index=True)
+            outcomes = request("GET", f"/tickets/{ref}/outcomes")
+            if outcomes:
+                st.dataframe(outcomes, hide_index=True)
+    with st.expander("Verified agent activity", on_change="rerun") as panel:
+        if panel.open:
+            activity(ref)
+
+
 def my_work(me, jump, evidence):
     manager = me["role"] == "manager"
     st.title("Task dashboard" if manager else "My work")
@@ -147,96 +319,8 @@ def my_work(me, jump, evidence):
     if ref := st.session_state.get("selected_ticket"):
         if st.button("Back to all tasks" if manager else "Back to my work"):
             jump("My work")
-        t = request("GET", "/tickets/" + ref)
-        w = t["work"]
-        label = words(problem_label(w["extraction"]))
-        st.subheader(f"Room {t['room']} · {label}")
-        st.caption(f"{ref} · {t['urgency']} · {t['status']}")
-        if label == MISSING:
-            st.caption(
-                "The earlier record contains no specific problem detail. Reception needs to clarify with the guest."
-            )
-        with st.expander("Problem details and priority"):
-            issue = w["extraction"].get("issue", "")
-            if issue and issue not in {label, "General request"}:
-                st.write(issue)
-            st.write(
-                t["analysis"].get("rule")
-                or (
-                    "Urgency is unassessed and needs immediate human review."
-                    if t["urgency"] == "Unassessed"
-                    else f"{t['urgency']} priority from the urgency classifier."
-                )
-            )
-            st.caption(
-                "Critical → Unassessed → Urgent → Moderate → Low; oldest first within each priority. Sentiment does not change the rank."
-            )
-        for c in w["extraction"].get("constraints", []):
-            st.write("• " + c["constraint"])
-        st.info(w["solution"]["next_action"])
-        st.caption(w["solution"]["reason"])
-        assignment = t.get("assignment")
-        from hotel.post_call_ui import edit_estimate
-
-        edit_estimate(t, me)
-        if t["analysis"].get("service_mode") == "reception_review":
-            st.warning(
-                "Reception follow up · clarify the issue or permission before arranging physical work."
-            )
-            if st.button("Ask guest for details", key="ask_details_" + ref):
-                request("POST", f"/tickets/{ref}/ask-details")
-                st.success(
-                    "Sent. The guest can update this same request in My requests."
-                )
-            st.caption(
-                "Start work to acknowledge the reception review. A review cannot be submitted as a completed repair."
-            )
-            if st.button("Check service assignment", key="recheck_" + ref):
-                result = request(
-                    "POST",
-                    "/work-assistant/turns",
-                    json={
-                        "turn_id": str(uuid4()),
-                        "text": "Retry assignment",
-                        "ref": ref,
-                        "version": w["version"],
-                    },
-                )
-                if result.get("changed"):
-                    st.rerun()
-                st.info(result["reply"])
-        if assignment:
-            st.caption(
-                f"Assigned to {assignment['name']} · Service target {assignment['service_due'][:16]} UTC"
-            )
-        if (
-            (
-                assignment
-                and assignment["staff"] == me["id"]
-                or not assignment
-                and w["owner"] == me["id"]
-            )
-            and t["status"] in {"Assigned", "In progress", "Escalated"}
-            and not t.get("awaiting_confirmation")
-        ):
-            assistant(ref, w["version"], t["room"])
-        elif t["status"] == "Awaiting confirmation" or t.get("awaiting_confirmation"):
-            st.info("The guest has been asked to confirm. This request remains open.")
-        elif t["status"] == "Escalated":
-            st.warning(t["lifecycle"]["reason"])
-            if me["role"] == "manager" and not assignment:
-                st.caption(
-                    "After correcting guidance or roster availability, tell the assistant: retry assignment."
-                )
-                assistant(ref, w["version"], t["room"])
-        with st.expander("NLP evidence"):
-            evidence(t["analysis"])
-        with st.expander("Assignment and work history"):
-            st.dataframe(request("GET", f"/tickets/{ref}/assignments"), hide_index=True)
-            if w["outcomes"]:
-                st.dataframe(w["outcomes"], hide_index=True)
-        with st.expander("Verified agent activity"):
-            activity(ref)
+        t = request("GET", "/tickets/" + ref, params={"prepare_recorder": True})
+        task_panel(t, me, evidence)
         return
     if manager:
         from hotel.supervisor_ui import overview

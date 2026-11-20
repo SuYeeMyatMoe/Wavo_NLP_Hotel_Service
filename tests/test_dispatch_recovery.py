@@ -42,6 +42,11 @@ def test_incomplete_call_recovered_on_same_request_to_confirmed_repair(client):
     assert t["analysis"]["service_mode"] == "reception_review"
     assert t["assignment"]
     owner = t["assignment"]["staff"]
+    assert client.post(
+        f"/tickets/{ref}/done",
+        headers={"x-preview-user": owner},
+        json={"key": str(uuid4()), "version": t["work"]["version"]},
+    ).status_code == 422
     assert client.post(f"/tickets/{ref}/ask-details", headers=G).status_code == 403
     assert client.post(f"/tickets/{ref}/ask-details", headers={"x-preview-user": "demo-maintenance"}).status_code == 403
     for _ in range(2):

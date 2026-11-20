@@ -2,7 +2,8 @@
 
 from pathlib import Path
 import os
-from hotel.nlp import ROOT
+
+ROOT = Path(__file__).resolve().parents[1]
 
 BASE = Path(os.getenv("HOTEL_MODELS_DIR", ROOT / ".runtime/languages"))
 MODELS = {

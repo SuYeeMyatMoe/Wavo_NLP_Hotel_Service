@@ -284,12 +284,25 @@ def alerts(ctx=Depends(context)):
 
 
 @app.get("/tickets/{ref}")
-def detail(ref: str, ctx=Depends(context)):
+def detail(ref: str, ctx=Depends(context), prepare_recorder: bool = False):
     db, p = ctx
     t = s.ticket(db, p, ref)
+    if p["role"] == "guest":
+        from hotel.guest_activity import request_detail
+
+        return request_detail(db, p, t)
     from hotel.work_orders import context as work_context
 
-    t["work"] = work_context(db, p, t)
+    t["work"] = work_context(db, p, t, include_outcomes=not prepare_recorder)
+    if (
+        prepare_recorder
+        and p["role"] in s.STAFF
+        and t["work"]["owner"] == p["id"]
+        and t["status"] in {"Assigned", "In progress", "Escalated"}
+    ):
+        from hotel.languages import warm_staff_recorder
+
+        warm_staff_recorder()
     from hotel.operations import snapshot
 
     t.update(snapshot(db, ref))
@@ -299,46 +312,6 @@ def detail(ref: str, ctx=Depends(context)):
     t["events"] = db.all(
         "SELECT action,created FROM events WHERE ticket=? ORDER BY created,id", (ref,)
     )
-    if p["role"] not in s.STAFF:
-        t["events"] = [
-            e
-            for e in t["events"]
-            if e["action"]
-            in {
-                "Request received",
-                "In progress",
-                "Resolved",
-                "Closed",
-                "Awaiting confirmation",
-                "Guest confirmed completion",
-                "Guest requested more help",
-                "Assigned",
-                "Reopened",
-                "Guest clarified request",
-                "Completion estimate updated",
-                "Pending assignment",
-                "Escalated",
-            }
-            or e["action"].startswith(("Assigned to ", "Guest feedback:"))
-        ]
-        return {
-            k: t[k]
-            for k in (
-                "id",
-                "room",
-                "complaint",
-                "status",
-                "department",
-                "created",
-                "events",
-                "source",
-                "work",
-                "lifecycle",
-                "assignment",
-                "awaiting_confirmation",
-                "completion_estimate",
-            )
-        }
     t["analysis"] = json.loads(t["analysis"])
     t["calls"] = db.all(
         "SELECT id,direction,status,transcript,created FROM calls WHERE ticket=? ORDER BY created",
@@ -396,14 +369,31 @@ def confirm_outcome(ref: str, body: Confirmation, actor=Depends(identity)):
 
 
 @app.post("/tickets/{ref}/feedback")
-def feedback(ref: str, body: Change, ctx=Depends(context)):
-    db, p = ctx
-    t = s.ticket(db, p, ref)
-    if p["role"] != "guest" or t["status"] not in {"Resolved", "Closed"}:
-        raise PermissionError("Guest feedback is available after resolution.")
-    if body.value not in {"Satisfied", "Needs attention"}:
-        raise ValueError("Choose a feedback option.")
-    s.record(db, ref, "Guest feedback: " + body.value, p["id"])
+def feedback(ref: str, body: Change, actor=Depends(identity)):
+    from hotel.work_orders import guest_rating, locked
+
+    with s.transaction() as db:
+        p = s.profile(db, actor)
+        t = locked(db, p, ref)
+        if (
+            p["role"] != "guest"
+            or t["guest"] != actor
+            or t["status"] not in {"Resolved", "Closed"}
+        ):
+            raise PermissionError(
+                "The linked guest can rate the service after resolution."
+            )
+        if body.value in {"1/5", "2/5", "3/5", "4/5", "5/5"}:
+            prior = guest_rating(db, ref)
+            if prior is not None:
+                if prior != int(body.value[0]):
+                    raise ValueError(
+                        "A rating has already been saved for this request."
+                    )
+                return {"saved": True}
+        elif body.value not in {"Satisfied", "Needs attention"}:
+            raise ValueError("Choose a rating from one to five stars.")
+        s.record(db, ref, "Guest feedback: " + body.value, actor)
     return {"saved": True}
 
 
@@ -575,12 +565,14 @@ def end(key: str, actor=Depends(identity)):
             raise PermissionError("Call unavailable.")
         if db.one("SELECT id FROM call_notes WHERE id=?", (key,)):
             concierge.finish(db, key)
-            return {"ended": True}
-        db.run(
-            "UPDATE calls SET status=? WHERE id=? AND status IN ('Ringing','Connecting','Connected')",
-            ("Declined" if c["status"] == "Ringing" else "Ended", key),
-        )
-        return {"ended": True}
+        else:
+            db.run(
+                "UPDATE calls SET status=? WHERE id=? AND status IN ('Ringing','Connecting','Connected')",
+                ("Declined" if c["status"] == "Ringing" else "Ended", key),
+            )
+    from hotel.completion import ended_receipt
+
+    return ended_receipt(actor, key)
 
 
 @app.get("/tools")

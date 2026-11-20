@@ -38,19 +38,20 @@ function setup(){
 }
 {
  const t=setup();await t.start();const pending=deferred();t.backend(()=>pending.promise);
- t.end();assert.equal(t.track.stopped,true);assert.equal(t.state.length,0);assert.equal(t.box.querySelector('small').textContent,'Checking your request…');
+ t.end();assert.equal(t.track.stopped,true);assert.equal(t.state[0][0],'finalizing');assert.equal(t.state[0][1].status,'pending');assert.equal(t.state.filter(x=>x[0]==='completed_call').length,0);assert.equal(t.box.querySelector('small').textContent,'Checking your request…');
  t.end();assert.equal(t.calls.filter(c=>c.url.endsWith('/cancel')).length,1);
+ render({...t.args,data:{...t.data,visible:false}});assert.equal(t.box.liveState.ending instanceof Promise,true);
  pending.resolve({ok:true,json:async()=>({ended:true,call_id:'call'})});await flush();await flush();
- assert.deepEqual(t.state,[['completed_call','call']]);assert.equal(t.box.liveState.completedCall,'call');
+ assert.deepEqual(t.state.filter(x=>x[0]==='completed_call'),[['completed_call','call']]);assert.equal(t.box.liveState.completedCall,'call');
  render({...t.args,data:{...t.data,dismissedCall:'call'}});assert.equal(t.box.liveState.phase,'idle');
  console.log('PASS receipt retains call ID only after confirmed finalization; dismissal resets launcher');
 }
 {
  const t=setup();await t.start();t.backend(async()=>{throw new TypeError('offline');});
  t.end();await flush();await t.timers.filter(x=>x.ms===500).at(-1).fn();await flush();await t.timers.filter(x=>x.ms===1000).at(-1).fn();await flush();
- assert.equal(t.track.stopped,true);assert.equal(t.state.length,0);assert.equal(t.box.querySelector('.hangup').textContent,'Retry finalization');
+ assert.equal(t.track.stopped,true);assert.equal(t.state.filter(x=>x[0]==='completed_call').length,0);assert.equal(t.state.at(-1)[1].status,'failed');assert.equal(t.box.querySelector('.hangup').textContent,'Retry finalization');
  t.backend(async()=>({ok:true,json:async()=>({ended:true,call_id:'call'})}));t.end();await flush();
- assert.deepEqual(t.state,[['completed_call','call']]);assert.equal(t.calls.filter(c=>c.url.endsWith('/start')).length,1);
+ assert.deepEqual(t.state.filter(x=>x[0]==='completed_call'),[['completed_call','call']]);assert.equal(t.calls.filter(c=>c.url.endsWith('/start')).length,1);
  console.log('PASS failed finalization never claims assignment; retry ends the same call');
 }
 {

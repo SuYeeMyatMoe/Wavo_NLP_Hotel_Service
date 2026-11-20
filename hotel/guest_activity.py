@@ -140,6 +140,87 @@ def activity(db, p, source="All", state="All", search="", page=1, page_size=20):
     return {"items": rows, "total": total, "page": page, "page_size": page_size}
 
 
+def request_detail(db, p, ticket):
+    """Read the related records together after the service authorizes this ticket."""
+    from hotel import completion, work_orders
+
+    ref = ticket["id"]
+    with db.batch():
+        work = db.run("SELECT * FROM ticket_work WHERE ticket=?", (ref,))
+        note = db.run(work_orders.LATEST_NOTE, (ref,))
+        life = db.run("SELECT * FROM service_lifecycle WHERE ticket=?", (ref,))
+        assignment = db.run(operations.ACTIVE_ASSIGNMENT, (ref,))
+        estimate = db.run(completion.ACTIVE_ESTIMATE, (ref,))
+        history = db.run(
+            "SELECT action,created FROM events WHERE ticket=? ORDER BY created,id",
+            (ref,),
+        )
+        updates = db.run(
+            "SELECT c.id,n.outcome,n.reply,n.language FROM calls c JOIN call_notes n ON n.id=c.id "
+            "WHERE c.ticket=? AND c.hotel=? AND c.guest=? AND n.outcome IN "
+            "('ETA changed','Room approval needed','Move approved','Move declined') ORDER BY c.created DESC",
+            (ref, p["hotel"], p["id"]),
+        )
+
+    def first(cursor):
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+    result = {
+        k: ticket[k]
+        for k in (
+            "id",
+            "room",
+            "complaint",
+            "status",
+            "department",
+            "created",
+            "source",
+        )
+    }
+    result.update(operations._snapshot(first(life), first(assignment)))
+    result["work"] = work_orders.guest_work(
+        ticket,
+        first(work) or work_orders.empty_work(ref),
+        work_orders.ticket_extraction(ticket, first(note)),
+    )
+    result["completion_estimate"] = completion.display(first(estimate))
+    result["call_updates"] = [dict(r) for r in updates]
+    guest_actions = {
+        "Request received",
+        "In progress",
+        "Resolved",
+        "Closed",
+        "Awaiting confirmation",
+        "Guest confirmed completion",
+        "Guest requested more help",
+        "Assigned",
+        "Reopened",
+        "Guest clarified request",
+        "Completion estimate updated",
+        "Pending assignment",
+        "Escalated",
+    }
+    result["events"] = [
+        dict(e)
+        for e in history
+        if e["action"] in guest_actions
+        or e["action"].startswith(("Assigned to ", "Guest feedback:"))
+    ]
+    ratings = {f"Guest feedback: {stars}/5": stars for stars in range(1, 6)}
+    result["rating"] = None
+    if ticket["status"] in {"Resolved", "Closed"}:
+        result["rating"] = next(
+            (
+                ratings[e["action"]]
+                for e in reversed(result["events"])
+                if e["action"] in ratings
+            ),
+            None,
+        )
+    return result
+
+
 def register(app, context):
     @app.get("/guest/activity")
     def listing(

@@ -48,10 +48,12 @@ def test_presentation_and_guest_resolution(tmp_path, monkeypatch):
     staff.session_state.work_open_ref = ref
     staff.run()
     next(w for w in staff.text_area if w.label == "Your work update").input(
-        "I repaired the AC in Room 305 and checked cooling."
+        "I started the AC repair in Room 305."
     )
     button(staff, "Send update").click().run()
+    button(staff, "Mark as done").click().run()
     assert not staff.exception
+    assert button(staff, "Marked as done").disabled
     guest = AppTest.from_file("../app.py", default_timeout=60)
     guest.session_state.preview_actor = "demo-guest"
     guest.session_state.destination = "My requests"
@@ -60,7 +62,11 @@ def test_presentation_and_guest_resolution(tmp_path, monkeypatch):
     assert not guest.exception
     button(guest, "Yes, fixed").click().run()
     assert any("Resolved" in c.value for c in guest.caption)
-    assert any(b.label == "Send feedback" for b in guest.button)
+    stars = guest.get("feedback")[0]
+    assert stars.value is None and button(guest, "Send rating").disabled
+    stars.set_value(4).run()
+    button(guest, "Send rating").click().run()
+    assert any("5/5 stars" in msg.value for msg in guest.success)
 
 
 def test_edit_invalidates_prediction(tmp_path, monkeypatch):
@@ -277,7 +283,7 @@ def test_summary_ok_keeps_work_open_and_unified_history(tmp_path, monkeypatch):
     assert "Call duration" in table.columns and "Expected completion" in table.columns
     assert "Calls" not in guest.segmented_control(key="nav").options
 
-    # A selected request must never replace the guest's complete history table.
+    # A selected request opens by itself; Back restores the complete table.
     from uuid import uuid4
 
     second = (
@@ -293,19 +299,22 @@ def test_summary_ok_keeps_work_open_and_unified_history(tmp_path, monkeypatch):
         )
         .json()["id"]
     )
+    guest.text_input(key="history_search").set_value(ref).run()
     guest.session_state.selected_ticket = ref
     guest.session_state.destination = "My requests"
     guest.run()
     assert not guest.exception
-    table = next(d.value for d in guest.dataframe if "Reference" in d.value.columns)
-    assert len(table) == 2
-    assert "Selected" in table["Action"].values
-    assert any(second[:12] in r for r in table["Reference"])
+    assert not any("Reference" in d.value.columns for d in guest.dataframe)
     assert any(s.value.startswith("Room 305") for s in guest.subheader)
-    button(guest, "Close details").click().run()
+    button(guest, "Back to requests").click().run()
     assert not guest.exception
     assert guest.session_state.get("selected_ticket") is None
+    assert guest.text_input(key="history_search").value == ref
     table = next(d.value for d in guest.dataframe if "Reference" in d.value.columns)
+    assert len(table) == 1
+    guest.text_input(key="history_search").set_value("").run()
+    table = next(d.value for d in guest.dataframe if "Reference" in d.value.columns)
+    assert any(second[:12] in r for r in table["Reference"])
     assert len(table) == 2 and all(table["Action"] == "Open")
 
 
