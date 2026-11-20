@@ -42,33 +42,6 @@
   pointer-events: none;
 }
 .mascot[data-mesh] img { visibility: hidden; }
-.mascot[data-mesh] .wavo-mascot-aura { display: none; }
-.wavo-mascot-aura {
-  position: absolute;
-  z-index: -1;
-  inset: 8%;
-  pointer-events: none;
-  color: var(--gold, #eed2a0);
-}
-.wavo-mascot-aura::before,
-.wavo-mascot-aura::after {
-  content: "";
-  position: absolute;
-  inset: 16% 1%;
-  border: 1px solid transparent;
-  border-left-color: currentColor;
-  border-right-color: currentColor;
-  border-radius: 50%;
-  opacity: .46;
-  transform: rotate(-34deg);
-}
-.wavo-mascot-aura::after {
-  inset: 10% 7%;
-  opacity: .28;
-  transform: rotate(36deg);
-}
-.mascot:hover .wavo-mascot-aura::before,
-.call-avatar[data-mode="speaking"] .wavo-mascot-aura::before { opacity: .72; }
 @media (prefers-reduced-motion: no-preference) {
   .mascot:not([data-mesh]) img { animation: wavo-portrait-float 5.1s ease-in-out infinite; }
 }

@@ -56,8 +56,6 @@ function VintageRoom({
           <button ref={menuButton} className="room-menu-toggle" type="button" aria-controls="room-nav"
             aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>Menu</button>
           <nav id="room-nav" aria-label="Hotel navigation" onClick={() => setMenuOpen(false)}>
-            <a href="#about">About</a>
-            <a href="#how-to-use">How to use</a>
             <a href="#hotel-services">Hotel services</a>
             <a href="?login=staff">Staff entrance</a>
             <a className="room-guest-link" href={entrance}>Guest sign in</a>

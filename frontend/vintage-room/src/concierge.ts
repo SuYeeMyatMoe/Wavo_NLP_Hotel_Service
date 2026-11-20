@@ -4,7 +4,6 @@ import {
 } from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { createConcierge } from "./conciergeModel";
-import { createConciergeOrbit } from "./conciergeOrbit";
 
 const mounted = new WeakSet<HTMLElement>();
 const tau = Math.PI * 2;
@@ -41,8 +40,7 @@ export function mountMascot(element: HTMLElement | null) {
   camera.lookAt(0, .035, 0);
 
   const model = createConcierge();
-  const orbit = createConciergeOrbit();
-  scene.add(model.root, orbit.root);
+  scene.add(model.root);
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.19;
@@ -102,8 +100,6 @@ export function mountMascot(element: HTMLElement | null) {
         motion * -.048 * Math.sin(time * 1.24 + .27),
       );
       model.pose(1 - Math.max(autoBlink, wink), 1 - autoBlink, talking, wink, step * 10, stride);
-      orbit.root.position.set(driftX * .5, floatY * .48, 0);
-      orbit.update(motion ? time : 0);
       renderer.render(scene, camera);
     }
     if (!reduced.matches || Math.abs(desiredYaw - yaw) > .002 || Math.abs(desiredPitch - pitch) > .002 || now / 1000 - winkAt < .4) {
@@ -192,7 +188,6 @@ export function mountMascot(element: HTMLElement | null) {
     host.removeEventListener("click", greet, true);
     host.removeEventListener("keydown", turn);
     model.dispose();
-    orbit.dispose();
     reflections.dispose();
     renderer.dispose();
     renderer.forceContextLoss();

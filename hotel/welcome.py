@@ -26,15 +26,11 @@ def service_card(title, detail, action, href, photos, order):
         f'aria-hidden="{str(index != 0).lower()}">'
         for index, (file, alt) in enumerate(photos)
     )
-    return f"""<div class="service-card" data-wavo-card data-wavo-reveal="{order}">
+    return f"""<div data-wavo-card data-wavo-reveal="{order}">
       <a href="{href}" target="_self">
         <div class="service-gallery" data-service-gallery>{slides}</div>
         <div class="service-copy"><strong>{title}</strong><span>{detail}</span><b>{action}</b></div>
       </a>
-      <div class="service-gallery-controls" hidden>
-        <button type="button" data-gallery-toggle aria-label="Pause {title} slideshow">Pause</button>
-        <button type="button" data-gallery-next aria-label="Next {title} photo">Next photo</button>
-      </div>
     </div>"""
 
 
@@ -54,21 +50,14 @@ def landing():
           {service_card("In-room service", "Repairs and housekeeping", "Request room service", "?login=guest&amp;service=comfort", ROOM_PHOTOS, 1)}
           {service_card("Reception", "Hotel information and guest support", "Contact reception", "?login=guest", RECEPTION_PHOTOS, 2)}
         </div></section>
-        <div class="hotel-guide">
-          <section id="about" data-wavo-reveal="0">
-            <h2>About</h2>
-            <p>Wavo is your hotel concierge. Ask about the hotel, request help for your room, and follow updates as the hotel team handles your request.</p>
-          </section>
-          <section id="how-to-use" data-wavo-reveal="1">
-            <h2>How to use</h2>
-            <ol>
-              <li>Press the brass phone button and sign in to your guest account.</li>
-              <li>Tell the AI receptionist what you need, or choose a service from the menu.</li>
-              <li>Open <strong>Track request</strong> after your call to check for updates.</li>
-            </ol>
-          </section>
-        </div>
-        <footer class="hotel-footer" data-wavo-reveal="0"><span role="img" aria-label="Wavo">{WORDMARK}</span></footer>""")
+        <footer class="hotel-footer" data-wavo-reveal="0">
+          {BRAND}
+          <nav aria-label="Footer navigation">
+            <a href="#hotel-services">Hotel services</a>
+            <a href="?login=guest" target="_self">Guest sign in</a>
+            <a href="?login=staff" target="_self">Staff entrance</a>
+          </nav>
+        </footer>""")
     st.stop()
 
 

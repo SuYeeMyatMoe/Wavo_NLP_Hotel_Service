@@ -37,33 +37,18 @@ function watchGalleries(main) {
     }
     for (const element of main.querySelectorAll("[data-service-gallery]")) {
       if (galleries.has(element)) continue;
-      const card = element.closest(".service-card");
       const gallery = {
         photos: [...element.querySelectorAll("img")],
-        toggle: card.querySelector("[data-gallery-toggle]"),
-        title: card.querySelector(".service-copy strong").textContent,
-        current: 0, playing: null, visible: false, timer: 0,
+        current: 0, visible: false, timer: 0,
       };
       galleries.set(element, gallery);
-      updateControl(gallery);
-      card.querySelector(".service-gallery-controls").hidden = false;
       viewport.observe(element);
     }
   }
 
-  function isPlaying(gallery) {
-    return gallery.playing ?? !reduced.matches;
-  }
-
-  function updateControl(gallery) {
-    const label = isPlaying(gallery) ? "Pause" : "Play";
-    gallery.toggle.textContent = label;
-    gallery.toggle.setAttribute("aria-label", `${label} ${gallery.title} slideshow`);
-  }
-
   function schedule(gallery) {
     clearTimeout(gallery.timer);
-    if (!gallery.visible || !isPlaying(gallery) || document.hidden) return;
+    if (!gallery.visible || reduced.matches || document.hidden) return;
     gallery.timer = setTimeout(() => {
       next(gallery);
       schedule(gallery);
@@ -71,10 +56,7 @@ function watchGalleries(main) {
   }
 
   function updatePlayback() {
-    for (const gallery of galleries.values()) {
-      updateControl(gallery);
-      schedule(gallery);
-    }
+    galleries.forEach(schedule);
   }
 
   function next(gallery) {
@@ -86,20 +68,6 @@ function watchGalleries(main) {
     gallery.current = index;
   }
 
-  function click(event) {
-    const button = event.target.closest("button[data-gallery-toggle], button[data-gallery-next]");
-    if (!button) return;
-    const gallery = galleries.get(button.closest(".service-card").querySelector("[data-service-gallery]"));
-    if (!gallery) return;
-    if (button === gallery.toggle) gallery.playing = !isPlaying(gallery);
-    else {
-      gallery.playing = false;
-      next(gallery);
-    }
-    updateControl(gallery);
-    schedule(gallery);
-  }
-
   const mutations = new MutationObserver((records) => {
     if (records.some(({ addedNodes, removedNodes }) =>
       [...addedNodes, ...removedNodes].some((node) => node instanceof Element &&
@@ -107,7 +75,6 @@ function watchGalleries(main) {
   });
   mutations.observe(main, { childList: true, subtree: true });
   scan();
-  main.addEventListener("click", click);
   reduced.addEventListener("change", updatePlayback);
   document.addEventListener("visibilitychange", updatePlayback);
 
@@ -115,7 +82,6 @@ function watchGalleries(main) {
     for (const gallery of galleries.values()) clearTimeout(gallery.timer);
     viewport.disconnect();
     mutations.disconnect();
-    main.removeEventListener("click", click);
     reduced.removeEventListener("change", updatePlayback);
     document.removeEventListener("visibilitychange", updatePlayback);
   };
@@ -202,15 +168,6 @@ export default function mount({ parentElement }) {
 
   const root = document.documentElement;
   const main = document.querySelector('[data-testid="stMain"]');
-  if (window.CSS?.registerProperty) {
-    try {
-      CSS.registerProperty({
-        name: "--wavo-card-angle", syntax: "<angle>", inherits: false, initialValue: "0deg",
-      });
-    } catch {
-      // A previous mount in this document may have registered the same property.
-    }
-  }
   const stopReveals = watchWorkspace(main);
   const stopGalleries = watchGalleries(main);
   const viewport = new ResizeObserver(updateWorkspaceWidth);
@@ -255,8 +212,6 @@ export default function mount({ parentElement }) {
     const x = Math.max(0, Math.min(1, (pointerX - bounds.left) / bounds.width));
     const y = Math.max(0, Math.min(1, (pointerY - bounds.top) / bounds.height));
     const style = activeCard.style;
-    style.setProperty("--card-light-x", `${x * 100}%`);
-    style.setProperty("--card-light-y", `${y * 100}%`);
     style.setProperty("--card-yaw", `${(x - .5) * 16}deg`);
     style.setProperty("--card-pitch", `${(.5 - y) * 13}deg`);
     style.setProperty("--card-drift", `${(x - .5) * 7}px`);
@@ -264,8 +219,7 @@ export default function mount({ parentElement }) {
   }
 
   function trackCard(event) {
-    const card = event.target instanceof Element && !event.target.closest(".service-gallery-controls")
-      ? event.target.closest("[data-wavo-card]") : null;
+    const card = event.target instanceof Element ? event.target.closest("[data-wavo-card]") : null;
     if (card !== activeCard) {
       settleCard();
       activeCard = card;
@@ -325,7 +279,14 @@ export default function mount({ parentElement }) {
   function move(event) {
     if (reduced.matches || event.pointerType === "touch") return;
     trackCard(event);
-    if (event.composedPath().some((element) => element instanceof Element && element.matches(".mascot"))) return;
+    if (event.composedPath().some((element) =>
+      element instanceof Element && element.matches(".mascot, .service-shortcuts, .hotel-services"))) {
+      for (const particle of particles) particle.remove();
+      particles.clear();
+      lastX = event.clientX;
+      lastY = event.clientY;
+      return;
+    }
     const now = performance.now();
     const dx = event.clientX - lastX;
     const dy = event.clientY - lastY;
