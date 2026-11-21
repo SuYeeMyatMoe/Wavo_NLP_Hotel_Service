@@ -1262,6 +1262,10 @@ if guest and (
         call=bool(S.get("finalizing_call") or S.get("completed_call")),
     )
 inbox_slot = st.container()
+# Consume the verified login response before page/history reads can exhaust
+# its cache TTL. This reserved container retains its existing page position.
+with inbox_slot:
+    workspace_updates()
 if page == "NLP Studio":
     intelligence()
 elif page == "Insights":
@@ -1300,16 +1304,27 @@ else:
 # Only foreground navigation owns the large loader. Background updates have
 # their own fragment and must never put the whole screen into a loading state.
 loading_slot.empty()
-if "login_render_started" in S:
+first_login_render = "login_render_started" in S
+if first_login_render:
     from time import perf_counter
 
     S.login_timings["usable_workspace_seconds"] = perf_counter() - S.pop(
         "login_render_started"
     )
+    history_started = perf_counter()
 if guest and page == "Reception":
     from hotel.guest_history_ui import home_progress
 
     with home_progress_slot:
         home_progress(jump)
-with inbox_slot:
-    workspace_updates()
+if first_login_render:
+    from streamlit.logger import get_logger
+
+    S.login_timings["history_seconds"] = perf_counter() - history_started
+    get_logger("streamlit.wavo.login").info(
+        "login authentication_ms=%.1f readiness_ms=%.1f workspace_ms=%.1f render_ms=%.1f history_ms=%.1f",
+        *(1000 * S.login_timings[key] for key in (
+            "authentication_seconds", "readiness_seconds", "workspace_seconds",
+            "usable_workspace_seconds", "history_seconds",
+        )),
+    )

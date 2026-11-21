@@ -26,6 +26,7 @@ from hotel.cloud_languages import LanguageUnavailable
 from hotel.nlp import ROOT
 from hotel.demo_accounts import PREVIEW_ACTORS
 from hotel.languages import Language, InputLanguage, guest_analysis, wav_bytes
+from hotel.latency import measure
 
 from hotel.privacy_logging import install as private_logs
 
@@ -165,7 +166,8 @@ def identity(
     try:
         from hotel.auth_http import user
 
-        r = user(authorization)
+        with measure("identity"):
+            r = user(authorization)
     except requests.RequestException:
         raise HTTPException(503, "Identity service unavailable.")
     if not r.ok:
@@ -185,16 +187,20 @@ def staff(p):
 
 @app.get("/me")
 def me(ctx=Depends(context)):
-    from hotel.work_assistant import test_mode
-
     db, p = ctx
     pref = (
         db.one("SELECT language FROM guest_languages WHERE guest=?", (p["id"],))
         if p["role"] == "guest"
         else None
     )
+    return profile_payload(p, pref)
+
+
+def profile_payload(p, pref=None):
+    from hotel.work_assistant import test_mode
+
     return {
-        **ctx[1],
+        **p,
         "mode": "Supabase" if s.connected() else "Local preview",
         "voice": s.voice_ready(),
         "work_assistant_test_mode": test_mode(),
@@ -291,6 +297,7 @@ def save(body: Save, actor=Depends(identity)):
 
 
 @app.get("/tickets")
+@measure("ticket_list")
 def listing(ctx=Depends(context)):
     return s.queue(*ctx)
 
@@ -299,7 +306,11 @@ def listing(ctx=Depends(context)):
 def alerts(ctx=Depends(context)):
     db, p = ctx
     staff(p)
-    return db.all(
+    return db.all(*alert_query(p))
+
+
+def alert_query(p):
+    return (
         "SELECT id,room FROM tickets WHERE hotel=? AND urgency='Critical' AND status='Assigned' ORDER BY created",
         (p["hotel"],),
     )
@@ -437,6 +448,10 @@ def consent(value: bool, ctx=Depends(context)):
 def calls(ctx=Depends(context), active_only: bool = False):
     db, p = ctx
     s.expire_invitations(db, p["hotel"])
+    return db.all(*call_query(p, active_only))
+
+
+def call_query(p, active_only=False):
     args = [p["hotel"]]
     where = "hotel=?"
     if active_only:
@@ -447,7 +462,7 @@ def calls(ctx=Depends(context), active_only: bool = False):
     elif p["role"] == "staff":
         where += " AND EXISTS(SELECT 1 FROM ticket_work w WHERE w.ticket=calls.ticket AND w.owner=?)"
         args.append(p["id"])
-    return db.all(
+    return (
         "SELECT id,guest,ticket,status,direction,operator,created,"
         "(SELECT engine FROM call_notes WHERE call_notes.id=calls.id) AS engine,"
         "(SELECT outcome FROM call_notes WHERE call_notes.id=calls.id) AS outcome,"
@@ -461,37 +476,51 @@ def calls(ctx=Depends(context), active_only: bool = False):
 
 
 @app.get("/workspace/updates")
+@measure("workspace_queries")
 def workspace_updates(ctx=Depends(context)):
     """One authorized refresh for the shell; no full ticket/NLP history load."""
     db, p = ctx
-    result = {
-        "profile": me(ctx),
-        "notifications": db.all(
+    # Authorization has already completed. Queue reads without fetching between
+    # them, so PostgreSQL can return all results in one round trip.
+    cursors = {}
+    pref = None
+    with db.batch():
+        if p["role"] == "guest":
+            pref = db.run(
+                "SELECT language FROM guest_languages WHERE guest=?", (p["id"],)
+            )
+        else:
+            staff(p)
+        cursors["notifications"] = db.run(
             "SELECT id,ticket,kind,message,created,delivery,published,read_at FROM notifications "
             "WHERE hotel=? AND recipient=? ORDER BY created DESC,id DESC LIMIT 100",
             (p["hotel"], p["id"]),
-        ),
-        "confirmations": [],
-        "active_calls": [],
-        "handoffs": [],
-        "alerts": [],
-    }
-    if p["role"] == "guest":
-        result["confirmations"] = db.all(
-            "SELECT t.id FROM tickets t LEFT JOIN service_lifecycle l ON l.ticket=t.id "
-            "WHERE t.hotel=? AND t.guest=? AND (t.status='Awaiting confirmation' "
-            "OR (l.state='escalated' AND l.reason='Guest confirmation is overdue; do not assume resolution.')) ORDER BY t.created",
-            (p["hotel"], p["id"]),
         )
-        result["active_calls"] = calls(ctx, active_only=True)
-    else:
-        result["alerts"] = alerts(ctx)
-        if p["role"] == "manager":
-            result["handoffs"] = db.all(
-                "SELECT n.room FROM call_notes n JOIN calls c ON c.id=n.id "
-                "WHERE n.hotel=? AND n.outcome='Waiting for reception' AND c.status='Connected' ORDER BY n.updated",
-                (p["hotel"],),
+        if p["role"] == "guest":
+            cursors["confirmations"] = db.run(
+                "SELECT t.id FROM tickets t LEFT JOIN service_lifecycle l ON l.ticket=t.id "
+                "WHERE t.hotel=? AND t.guest=? AND (t.status='Awaiting confirmation' "
+                "OR (l.state='escalated' AND l.reason='Guest confirmation is overdue; do not assume resolution.')) ORDER BY t.created",
+                (p["hotel"], p["id"]),
             )
+            # Preserve expiry-before-read ordering in the same transaction.
+            s.expire_invitations(db, p["hotel"])
+            cursors["active_calls"] = db.run(*call_query(p, active_only=True))
+        else:
+            cursors["alerts"] = db.run(*alert_query(p))
+            if p["role"] == "manager":
+                cursors["handoffs"] = db.run(
+                    "SELECT n.room FROM call_notes n JOIN calls c ON c.id=n.id "
+                    "WHERE n.hotel=? AND n.outcome='Waiting for reception' AND c.status='Connected' ORDER BY n.updated",
+                    (p["hotel"],),
+                )
+    preferences = db.rows(pref) if pref is not None else []
+    result = {
+        key: []
+        for key in ("notifications", "confirmations", "active_calls", "handoffs", "alerts")
+    }
+    result["profile"] = profile_payload(p, preferences[0] if preferences else None)
+    result.update({key: db.rows(cursor) for key, cursor in cursors.items()})
     return result
 
 

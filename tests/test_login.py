@@ -43,6 +43,10 @@ def test_hosted_login_reuses_verified_workspace_data(
         alerts=[],
     )
     calls = []
+    cache_clock = [0.0]
+    monkeypatch.setattr(
+        ui_client, "time", SimpleNamespace(monotonic=lambda: cache_clock[0])
+    )
 
     def response(value):
         return SimpleNamespace(ok=True, status_code=200, json=lambda: value)
@@ -64,6 +68,9 @@ def test_hosted_login_reuses_verified_workspace_data(
     def api(method, url, **kwargs):
         calls.append((method, url))
         assert url == "http://hotel.test/tickets"
+        # History can outlast the workspace cache TTL. It must not cause a
+        # second authorized workspace fetch during the first render.
+        cache_clock[0] += 11
         if history_failure:
             raise requests.Timeout()
         return response([])
@@ -97,6 +104,7 @@ def test_hosted_login_reuses_verified_workspace_data(
         "readiness_seconds",
         "workspace_seconds",
         "usable_workspace_seconds",
+        "history_seconds",
     }
     if history_failure:
         assert ui.warning

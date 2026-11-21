@@ -127,31 +127,26 @@ def snapshots(db, refs):
     for offset in range(0, len(refs), 500):
         batch = refs[offset : offset + 500]
         marks = ",".join("?" for _ in batch)
-        lives = {
-            r["ticket"]: r
-            for r in db.all(
+        with db.batch():
+            lives_cursor = db.run(
                 f"SELECT * FROM service_lifecycle WHERE ticket IN ({marks})", batch
             )
-        }
-        assignments = {
-            r["ticket"]: r
-            for r in db.all(
+            assignments_cursor = db.run(
                 "SELECT a.*,r.name FROM task_assignments a JOIN staff_roster r ON r.staff=a.staff "
                 f"WHERE a.active=1 AND a.ticket IN ({marks})",
                 batch,
             )
-        }
-        from hotel.completion import display
-
-        estimates = {
-            r["ticket"]: display(r)
-            for r in db.all(
+            estimates_cursor = db.run(
                 "SELECT e.* FROM completion_estimates e JOIN task_assignments a ON a.id=e.assignment WHERE a.active=1 AND e.ticket IN ("
                 + marks
                 + ")",
                 batch,
             )
-        }
+        from hotel.completion import display
+
+        lives = {r["ticket"]: r for r in db.rows(lives_cursor)}
+        assignments = {r["ticket"]: r for r in db.rows(assignments_cursor)}
+        estimates = {r["ticket"]: display(r) for r in db.rows(estimates_cursor)}
         result.update(
             {
                 ref: {

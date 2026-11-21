@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 from time import perf_counter
-from hotel.latency import database_elapsed, database_batch
+from hotel.latency import database_elapsed, database_batch, measure
 
 from dotenv import load_dotenv
 
@@ -51,11 +51,16 @@ class DB:
         return dict(row) if row else None
 
     def all(self, query, args=()):
-        return [dict(r) for r in self.run(query, args).fetchall()]
+        return self.rows(self.run(query, args))
+
+    @staticmethod
+    def rows(cursor):
+        """Collect a queued read only after its batch has synchronized."""
+        return [dict(r) for r in cursor.fetchall()]
 
     @contextmanager
     def batch(self):
-        """Batch dependent-order writes whose results are not needed until exit."""
+        """Queue commands in order; fetch read cursors only after exiting."""
         if self._batch_active:
             yield
             return
@@ -74,8 +79,9 @@ def transaction(actor=None):
     if pg:
         from hotel.db_pool import pool
 
-        lease = pool()
-        conn = lease.getconn()
+        with measure("database_acquire"):
+            lease = pool()
+            conn = lease.getconn()
     else:
         path = Path(os.getenv("PREVIEW_DB", ROOT / ".runtime/preview.sqlite3"))
         path.parent.mkdir(parents=True, exist_ok=True)
