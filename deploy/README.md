@@ -96,6 +96,14 @@ See [the deployment verification record](VERIFICATION.md) for observed results
 and the remaining provider availability limitation, and [startup measurements](PERFORMANCE.md)
 for the login optimization and cold-start checks.
 
+For a slow successful login, inspect the content-free login timing line in the
+frontend logs. `readiness_ms` is API wake-up, `workspace_ms` is the authenticated
+workspace response, and `render_ms` is the first workspace render. Compare the
+API's `identity`, `database_acquire`, and `workspace_queries` stages to locate the
+delay. Guest history has its own trailing duration. Keep refresh intervals numeric
+where possible (`run_every=15`): string intervals import pandas during parsing.
+Do not increase authentication caching or extend timeouts to conceal a slow stage.
+
 Run `python -m pytest -q tests`. For a clean Linux check without local speech models:
 
 ```sh
