@@ -1050,7 +1050,8 @@ def safety_alerts(waiting, alerts):
             jump("Requests", first["id"])
 
 
-@st.fragment(run_every="15s")
+# Numeric seconds avoid importing pandas just to parse an interval at login.
+@st.fragment(run_every=15)
 def workspace_updates():
     from hotel.ui_client import remember
 

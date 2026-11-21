@@ -1,3 +1,4 @@
+import builtins
 from types import SimpleNamespace
 from concurrent.futures import Future
 
@@ -21,6 +22,15 @@ def test_hosted_login_reuses_verified_workspace_data(
     monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
     monkeypatch.setenv("WAVO_DEMO_LOGIN", "false")
     monkeypatch.setenv("WAVO_WAKE_API", str(wake_enabled).lower())
+    if role == "guest":
+        original_import = builtins.__import__
+
+        def without_interval_pandas(name, globals=None, locals=None, fromlist=(), level=0):
+            if name == "pandas" and (globals or {}).get("__name__") == "streamlit.time_util":
+                pytest.fail("Guest login must not load pandas to parse a refresh interval")
+            return original_import(name, globals, locals, fromlist, level)
+
+        monkeypatch.setattr(builtins, "__import__", without_interval_pandas)
     wake = Future()
     monkeypatch.setattr(readiness, "begin_wake", lambda _: wake)
     profile = dict(

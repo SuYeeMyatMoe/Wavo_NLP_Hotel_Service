@@ -180,7 +180,7 @@ def related_calls(ref):
             st.caption("This request has no linked calls.")
 
 
-@st.fragment(run_every="15s")
+@st.fragment(run_every=15)
 def home_progress(jump):
     tasks = request("GET", "/tickets", optional=True)
     if tasks is None:
